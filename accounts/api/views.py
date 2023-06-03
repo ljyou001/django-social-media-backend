@@ -4,6 +4,7 @@ from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from accounts.api.serializers import UserSerializer
+from django.contrib.auth import logout as django_logout
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -31,5 +32,9 @@ class AccountViewSet(viewsets.ViewSet):
             data['user'] = UserSerializer(request.user).data
         return Response(data)
     
+    @action(methods=['post'], detail=False)
+    def logout(self, request):
+        django_logout(request)
+        return Response({'success': True})
 
 # 这里所用的viewset是一个空的viewset，全部自己定义想要的东西
