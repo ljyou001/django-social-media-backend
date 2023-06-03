@@ -38,7 +38,10 @@ class AccountViewSet(viewsets.ViewSet):
     # 自定义了一个动作来操作
     # detail=False：意味着这是定义在整体资源上的一个动作，不需要写objectID
     def login_status(self, request):
-        data = {'has_logged_in': request.user.is_authenticated}
+        data = {
+            'has_logged_in': request.user.is_authenticated,
+            'ip': request.META['REMOTE_ADDR']
+        }
         if request.user.is_authenticated:
             data['user'] = UserSerializer(request.user).data
         return Response(data)
