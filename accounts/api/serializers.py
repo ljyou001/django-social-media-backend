@@ -18,6 +18,7 @@ class LoginSerializer(serializers.Serializer):
             raise exceptions.ValidationError({'username': 'Username does not exist'})
         return data
 
+      
 class SignupSerializer(serializers.ModelSerializer):
     # why ModelSerializer: We hope the user will be created in the end
     username = serializers.CharField(max_length=30, min_length=3)
