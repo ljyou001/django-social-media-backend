@@ -66,14 +66,15 @@ class AccountViewSet(viewsets.ViewSet):
         # If you would like to know how the sql query executed in the BG:
         # queryset = User.objects.filter(username=username)
         # print(queryset.query)
-        if not User.objects.filter(username=username).exists():
-            return Response({
-                "success": False,
-                "manage": "User does not exist"
-            }, status=400)
+        # if not User.objects.filter(username=username.lower()).exists():
+        #     return Response({
+        #         "success": False,
+        #         "manage": "User does not exist"
+        #     }, status=400)
         # Normally we will not user this though
+        # >> now above code validation steps has been moved to the serializer
 
-        user = django_authenticate(username=username, password=password)
+        user = django_authenticate(username=username.lower(), password=password)
         # django_login only accept the user gone through the django_authenticate
         if not user or user.is_anonymous:
             return Response({
