@@ -3,7 +3,11 @@ from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from accounts.api.serializers import UserSerializer, LoginSerializer
+from accounts.api.serializers import (
+    UserSerializer,
+    LoginSerializer,
+    SignupSerializer,
+)
 from django.contrib.auth import (
     logout as django_logout,
     login as django_login,
@@ -27,7 +31,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AccountViewSet(viewsets.ViewSet):
     # 这里所用的viewset是一个空的viewset，全部自己定义想要的东西
-    serializer_class = LoginSerializer
+    serializer_class = SignupSerializer
     # You can define a default serializer for this class
 
     @action(methods=['get'], detail=False)
@@ -81,3 +85,20 @@ class AccountViewSet(viewsets.ViewSet):
             "success": True,
             "user": UserSerializer(instance=user).data,
         }, status=200)
+    
+    @action(methods=['post'], detail=False)
+    def signup(self, request):
+        serializer = SignupSerializer(data=request.data)
+        # If SignupSerializer(instance=user, data=request.data), it is updating data rather than create a new one
+        if not serializer.is_valid():
+            return Response({
+                "success": False,
+                "manage": "Please check your input",
+                "errors": serializer.errors
+            }, status=400)
+        user = serializer.save()
+        django_login(request, user)
+        return Response({
+            'success': True,
+            'user': UserSerializer(user).data,
+        }, status=201)
