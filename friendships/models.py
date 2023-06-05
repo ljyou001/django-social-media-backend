@@ -10,10 +10,10 @@ class Friendship(models.Model):
         related_name='following_friendship_set',
         help_text='The user who followed someone',
     )
-    # about reverse lookup: user.tweets_set equal to Tweets.objects.filter(user=user)
+    # about reverse lookup: user.tweets_set equal to Tweet.objects.filter(user=user)
     # the reason why we need to rename the reverse lookup set by related_name
     # is because we need to clearly know the direction of the operation of the site
-    # here: user.following_friendship_set = Friendships.objects.filter(user=user).from_user
+    # here: user.following_friendship_set = Friendship.objects.filter(user=user).from_user
 
     to_user = models.ForeignKey(
         User,
