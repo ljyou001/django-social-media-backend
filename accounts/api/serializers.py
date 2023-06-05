@@ -10,7 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
 class UserSerializerForTweets(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username',)
+        fields = ('id', 'username')
 
 
 class LoginSerializer(serializers.Serializer):

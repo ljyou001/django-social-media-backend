@@ -1,11 +1,11 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from tweets.api.serializers import TweetSerializer#, TweetCreateSerializer
+from tweets.api.serializers import TweetSerializer, TweetSerializerForCreate
 from tweets.models import Tweet
 
 class TweetViewSet(viewsets.GenericViewSet):
-    serializer_class = TweetSerializer
+    serializer_class = TweetSerializerForCreate
 
     def get_permissions(self):
         """
@@ -31,4 +31,15 @@ class TweetViewSet(viewsets.GenericViewSet):
         # we normally will not directly return a list, that's why we warpped with a dict
     
     def create(self, request):
-        pass
+        serializer = TweetSerializerForCreate(
+            data=request.data,
+            context={'request': request},
+        )
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'message': 'Please check your input',
+                'errors': serializer.errors
+            }, status=400)
+        tweet = serializer.save() # trigger create() in serializer
+        return Response(TweetSerializer(tweet).data, status=201)
