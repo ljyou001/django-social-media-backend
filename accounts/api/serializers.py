@@ -7,6 +7,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email')
 
+class UserSerializerForTweets(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username')
+
 
 class LoginSerializer(serializers.Serializer):
     # 仅用来帮助检测是否有这两项，CharField里面required默认为True
