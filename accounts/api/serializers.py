@@ -5,13 +5,15 @@ from rest_framework import serializers, exceptions
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'email')
+        fields = ('id', 'username', 'email')
 
 class UserSerializerForTweets(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username')
 
+class UserSerializerForFriendship(UserSerializerForTweets):
+    pass
 
 class LoginSerializer(serializers.Serializer):
     # 仅用来帮助检测是否有这两项，CharField里面required默认为True
