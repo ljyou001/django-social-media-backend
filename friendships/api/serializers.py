@@ -13,7 +13,7 @@ class FollowerSerializer(serializers.ModelSerializer):
         fields = ('user', 'created_at')
 
 
-class FollowingSerializer(serializers.ModelSerializer):
+class FollowingsSerializer(serializers.ModelSerializer):
     user = UserSerializerForFriendship(source='to_user')
     class Meta:
         model = Friendship

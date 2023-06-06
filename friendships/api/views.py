@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from friendships.models import Friendship
 from friendships.api.serializers import (
-    FollowingSerializer,
+    FollowingsSerializer,
     FollowerSerializer,
     FriendshipSerializerForCreate,
 )
@@ -26,15 +26,15 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         return Response({'followers': serializer.data}, status=status.HTTP_200_OK)
     
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
-    def following(self, request, pk):
+    def followings(self, request, pk):
         """
-        Get a list of following user based on from_user_id
+        Get a list of followings user based on from_user_id
         pk should be from_user_id
-        GET /api/friendships/pk/following/
+        GET /api/friendships/pk/followings/
         """
         friendships = Friendship.objects.filter(from_user_id=pk).order_by('-created_at')
-        serializer = FollowingSerializer(friendships, many=True)
-        return Response({'following': serializer.data}, status=status.HTTP_200_OK)
+        serializer = FollowingsSerializer(friendships, many=True)
+        return Response({'followings': serializer.data}, status=status.HTTP_200_OK)
     
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
     def follow(self, request, pk):
@@ -104,7 +104,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
     def list(self,request):
         """
         list function is for the GET function at the root endpoint of this API viewset
-        Here I would like to provided a more restful API endpoint for following/follower
+        Here I would like to provided a more restful API endpoint for followings/follower
         """
         if request.query_params['type'] == 'followers':
             if 'to_user_id' not in request.query_params:
@@ -118,7 +118,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             return Response({'followers': serializer.data}, status=status.HTTP_200_OK)
             # return followers of an account
         
-        elif request.query_params['type'] == 'following':
+        elif request.query_params['type'] == 'followings':
             if 'from_user_id' not in request.query_params:
                 return Response({
                     'message': 'mandatory parameter must exist (from_user_id for this type)',
@@ -132,11 +132,11 @@ class FriendshipViewSet(viewsets.GenericViewSet):
                 return Response({'is_following': is_following}, status=status.HTTP_200_OK)
                 # check the following relationship between from_user_id and to_user_id
             
-            serializer = FollowingSerializer(friendships, many=True)
-            return Response({'following': serializer.data}, status=status.HTTP_200_OK)
-            # return the following list of an account
+            serializer = FollowingsSerializer(friendships, many=True)
+            return Response({'followings': serializer.data}, status=status.HTTP_200_OK)
+            # return the followings list of an account
 
         return Response(Response({
-            'message': 'This is friendship API, please define request type in get parm (followers/following)'
+            'message': 'This is friendship API, please define request type in get parm (followers/followings)'
         }))
         # default return with no useful information

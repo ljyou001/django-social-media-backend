@@ -33,6 +33,7 @@ class Friendship(models.Model):
         unique_together = (
             ('from_user', 'to_user'),
         ) 
+        ordering = ('-created_at',)
         # this is to avoid duplicate entries for this pair of relation, 
         # say operate too fast in frontend and leads to call two async operations in backend
 
