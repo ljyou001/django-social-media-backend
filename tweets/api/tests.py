@@ -15,7 +15,7 @@ class TweetApiTests(TestCase):
         # This function will be executed once before each test function
 
         # Here you can see how to distinguish anonymous user and logged in user
-        self.anonymous_client = APIClient()
+        # self.anonymous_client = APIClient()
 
         self.user1 = self.create_user('user1', 'user1@jiuzhang.com')
         self.tweets1 = [
