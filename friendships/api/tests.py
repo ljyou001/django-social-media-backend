@@ -10,7 +10,7 @@ FOLLOWINGS_URL = '/api/friendships/{}/followings/'
 class FriendshipApiTests(TestCase):
 
     def setUp(self):
-        self.anonymous_client = APIClient()
+        # self.anonymous_client = APIClient()
 
         self.youge = self.create_user('youge')
         self.youge_client = APIClient()
