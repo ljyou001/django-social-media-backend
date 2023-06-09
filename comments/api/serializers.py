@@ -49,3 +49,19 @@ class CommentSerializerForCreate(serializers.ModelSerializer):
             tweet_id = validated_data['tweet_id'],
             content = validated_data['content'],
         )
+    
+class CommentSerializerForUpdate(serializers.ModelSerializer):
+    # This class also showing the advantage of seperate features need a standalone serializer
+    # only "content" can be accessed through this serializer
+    # If you use CommentSerializerForCreate, many unnecessary fields will be exposed for editing
+    # which is dangerous
+
+    class Meta:
+        model = Comment
+        fields = ('content',)
+
+    def update(self, instance, validated_data):
+        instance.content = validated_data['content']
+        instance.save()
+        return instance
+    
