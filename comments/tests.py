@@ -1,5 +1,7 @@
 from testing.testcases import TestCase
 
+# FYI: run the test before migrate database
+# in case you need to modify the model, add more migration files, slow down the test
 class CommentModelTest(TestCase):
 
     def test_comment(self):

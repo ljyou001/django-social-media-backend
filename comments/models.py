@@ -20,7 +20,7 @@ class Comment(models.Model):
         ordering = ['-created_at']
     
     def __str__(self) -> str:
-        return '{} - {} commented {} on {}'.format(
+        return '{} - {} commented {} | on tweet ID {}'.format(
             self.created_at, 
             self.user, 
             self.content,
