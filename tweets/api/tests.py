@@ -1,7 +1,7 @@
 from rest_framework.test import APIClient
+
 from testing.testcases import TestCase
 from tweets.models import Tweet
-
 
 # 注意要加 '/' 结尾，要不然会产生 301 redirect
 # 以防写错，最好在最上面先写好API endpoint
