@@ -1,8 +1,9 @@
-from accounts.api.serializers import UserSerializerForFriendship
-from friendships.models import Friendship
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from django.contrib.auth.models import User
+
+from accounts.api.serializers import UserSerializerForFriendship
+from friendships.models import Friendship
 
 
 class FollowerSerializer(serializers.ModelSerializer):

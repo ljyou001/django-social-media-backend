@@ -1,14 +1,14 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from friendships.models import Friendship
-from friendships.api.serializers import (
-    FollowingsSerializer,
-    FollowerSerializer,
-    FriendshipSerializerForCreate,
-)
 from django.contrib.auth.models import User
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+
+from friendships.api.serializers import (FollowerSerializer,
+                                         FollowingsSerializer,
+                                         FriendshipSerializerForCreate)
+from friendships.models import Friendship
+
 
 class FriendshipViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()

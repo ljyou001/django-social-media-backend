@@ -1,6 +1,8 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
+
 from tweets.models import Tweet
+
 # Create your models here.
 
 class NewsFeed(models.Model):
