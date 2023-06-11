@@ -56,6 +56,29 @@ class CommentViewSet(viewsets.GenericViewSet):
             # 1. Speed up the processing
             # 2. Less misleading error message
         return [AllowAny()]
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all comments based on your tweet id
+        GET /api/comments/<tweet_id>
+
+        AllowAny is OK, no need to change the get_permissions
+        """
+        if 'tweet_id' not in request.query_params:
+            return Response({
+                'success': False,
+                'message': 'tweet_id is missing',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        tweet_id = request.query_params['tweet_id']
+        comments = Comment.objects.filter(tweet_id=tweet_id)
+        # comments = Comment.objects.filter(tweet=tweet_id) is also OK
+        serializer = CommentSerializer(comments, many=True)
+        # many=True means it will return a list of Comment objects
+        return Response({
+            'success': True, 
+            'comments': serializer.data,
+        }, status=status.HTTP_200_OK)
         
     def create(self, request, *args, **kwargs):
         """
