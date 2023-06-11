@@ -42,6 +42,9 @@ class CommentViewSet(viewsets.GenericViewSet):
     queryset = Comment.objects.all()
     # queryset is providing the following API:
     # GET /api/comments/<pk>/
+
+    filterset_fields = ('tweet_id',)
+    # after you installed django-filter
     
     def get_permissions(self):
         if self.action == 'create':
@@ -60,7 +63,7 @@ class CommentViewSet(viewsets.GenericViewSet):
     def list(self, request, *args, **kwargs):
         """
         List all comments based on your tweet id
-        GET /api/comments/<tweet_id>
+        GET /api/comments/?tweet_id=<tweet_id>
 
         AllowAny is OK, no need to change the get_permissions
         """
@@ -70,11 +73,19 @@ class CommentViewSet(viewsets.GenericViewSet):
                 'message': 'tweet_id is missing',
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        tweet_id = request.query_params['tweet_id']
-        comments = Comment.objects.filter(tweet_id=tweet_id)
-        # comments = Comment.objects.filter(tweet=tweet_id) is also OK
+        # BEFORE django filter
+        # tweet_id = request.query_params['tweet_id']
+        # comments = Comment.objects.filter(tweet_id=tweet_id).order_by('-created_at')
+        # # comments = Comment.objects.filter(tweet=tweet_id) is also OK
+        
+        # AFTER django filter
+        queryset = self.get_queryset()
+        # this get_queryset is using the `queryset = Comment.objects.all()` above
+        comments = self.filter_queryset(queryset).order_by('-created_at')
+
         serializer = CommentSerializer(comments, many=True)
         # many=True means it will return a list of Comment objects
+
         return Response({
             'success': True, 
             'comments': serializer.data,

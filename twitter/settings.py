@@ -31,6 +31,7 @@ INTERNAL_IPS = ['127.0.0.1', '192.168.1.8', 'localhost']
 # Application definition
 
 INSTALLED_APPS = [
+    # django default
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,9 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # 3rd party packages
     'rest_framework',
     "debug_toolbar",
+    'django_filters',
 
+    # project apps
     'tweets',
     'friendships',
     'newsfeeds',
@@ -49,7 +53,12 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
+
+    # Settings for django_filters
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
 }
 
 MIDDLEWARE = [
