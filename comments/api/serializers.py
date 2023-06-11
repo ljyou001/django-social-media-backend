@@ -13,6 +13,18 @@ class CommentSerializer(serializers.ModelSerializer):
     # 
     # Why only tweet_id rather tweet and import TweetSerializer?
     # Cuz in this case, we don't need to know the exact tweet.
+    # 
+    # PERFORMANCE ISSUE
+    # Using UserSerializerForComment() could cause a bad performance issue:
+    # Say there are n comments in a tweet, then django will sent n SQL queries for user info
+    # To utilize this, you can use .prefetch_related('user') in the queryset
+    # Go check it out in the views.py
+    # Then you will see the debug log:
+    # (0.000) SELECT `auth_user`.`id`, ... WHERE `auth_user`.`id` = 1 LIMIT 21; args=(1,)
+    # (0.000) SELECT `auth_user`.`id`, ... WHERE `auth_user`.`id` = 1 LIMIT 21; args=(1,)
+    # (0.000) SELECT `auth_user`.`id`, ... WHERE `auth_user`.`id` = 3 LIMIT 21; args=(3,)
+    # was turned into the following:
+    # (0.000) SELECT `auth_user`.`id`, ... WHERE `auth_user`.`id` IN (1, 3); args=(1, 3)
 
     class Meta:
         model = Comment

@@ -81,7 +81,16 @@ class CommentViewSet(viewsets.GenericViewSet):
         # AFTER django filter
         queryset = self.get_queryset()
         # this get_queryset is using the `queryset = Comment.objects.all()` above
-        comments = self.filter_queryset(queryset).order_by('-created_at')
+        comments = self.filter_queryset(queryset).\
+                prefetch_related('user').\
+                order_by('-created_at')
+        # prefetch_related('user'): to utilize the massive amount of SQL query.
+        # check serializer CommentSerializer class for more information
+        # you can also user select_related('user'), it will use the JOIN query
+        # But join has its limitation: 
+        # 1. must within a same database 
+        # 2. it will slow down the processing
+        # 3. it will take up a lot of memory
 
         serializer = CommentSerializer(comments, many=True)
         # many=True means it will return a list of Comment objects

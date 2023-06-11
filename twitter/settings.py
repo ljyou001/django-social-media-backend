@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'li5n-2i4%43%j)%&i$&rx1aq)o^bzv5-_@+x8)&j%(sg)gl^qa'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1', '192.168.1.8', 'localhost']
 
@@ -145,3 +145,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# This is how to import local settings in django
+try:
+    from .local_settings import *
+    # Normally, for the best practice, don't use import * for performance
+    # But you can use it here since it is a local setting file
+    # Since you need all the settings 
+except:
+    pass
