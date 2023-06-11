@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'li5n-2i4%43%j)%&i$&rx1aq)o^bzv5-_@+x8)&j%(sg)gl^qa'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1', '192.168.1.8', 'localhost']
 
@@ -31,6 +31,7 @@ INTERNAL_IPS = ['127.0.0.1', '192.168.1.8', 'localhost']
 # Application definition
 
 INSTALLED_APPS = [
+    # django default
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,9 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # 3rd party packages
     'rest_framework',
     "debug_toolbar",
+    'django_filters',
 
+    # project apps
     'tweets',
     'friendships',
     'newsfeeds',
@@ -49,7 +53,12 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
+
+    # Settings for django_filters
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
 }
 
 MIDDLEWARE = [
@@ -136,3 +145,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# This is how to import local settings in django
+try:
+    from .local_settings import *
+    # Normally, for the best practice, don't use import * for performance
+    # But you can use it here since it is a local setting file
+    # Since you need all the settings 
+except:
+    pass

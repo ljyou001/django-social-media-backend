@@ -112,3 +112,34 @@ class CommentAPITestCase(TestCase):
         self.assertEqual(comment.tweet, self.tweet)
         self.assertEqual(comment.user, self.user1)
         
+    def test_list(self):
+        # Negative case: Not providing tweet_id
+        response = self.anonymous_client.get(COMMENT_URL)
+        self.assertEqual(response.status_code, 400)
+
+        # Positive case: ask for comments of a 0 comment tweet
+        response = self.user1_client.get(COMMENT_URL, {
+            'tweet_id': self.tweet.id,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['comments']), 0)
+
+        # Positive case set up: 
+        self.create_comment(self.user1, self.tweet, '1')
+        self.create_comment(self.user2, self.tweet, '2')
+        self.create_comment(self.user1, self.create_tweet(self.user2), '3')
+
+        # Positive case CHECK: comments of a tweet -create_at order
+        response = self.anonymous_client.get(COMMENT_URL, {
+            'tweet_id': self.tweet.id,
+        })
+        self.assertEqual(len(response.data['comments']), 2)
+        self.assertEqual(response.data['comments'][0]['content'], '2')
+        self.assertEqual(response.data['comments'][1]['content'], '1')
+
+        # Positive case CHECK: if other parms provided, say user_id
+        response = self.anonymous_client.get(COMMENT_URL, {
+            'tweet_id': self.tweet.id,
+            'user_id': self.user2.id
+        })
+        self.assertEqual(len(response.data['comments']), 2)
