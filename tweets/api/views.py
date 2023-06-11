@@ -3,12 +3,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from newsfeeds.services import NewsFeedService
-from tweets.api.serializers import(
-    TweetSerializer,
+from tweets.api.serializers import (
+    TweetSerializer, 
     TweetSerializerForCreate,
     TweetSerializerWithComments,
-) 
+)
 from tweets.models import Tweet
+from utils.decorators import required_params
 
 
 class TweetViewSet(viewsets.GenericViewSet):
@@ -29,15 +30,17 @@ class TweetViewSet(viewsets.GenericViewSet):
         GET /api/tweets/{pk}
         """
         tweet = self.get_object()
+        # MUST have queryset defined in the viewset
         return Response(TweetSerializerWithComments(tweet).data)
-
+    
+    @required_params(request_attr='query_params', params=['user_id'])
     def list(self, request):
         """
         list tweets based on user id
         """
-        if 'user_id' not in request.query_params:
-            return Response(status=400)
-        
+        # if 'user_id' not in request.query_params:
+        #     return Response(status=400)
+
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id'] 
         ).order_by('-created_at')         # -: reverse
