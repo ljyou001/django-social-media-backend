@@ -1,8 +1,8 @@
-from django.db import models
 from django.contrib.auth.models import User
-# import datetime
+from django.db import models
+
+# from comments.models import Comment
 from utils.time_helper import utc_now
-# Create your models here.
 
 class Tweet(models.Model):
     user = models.ForeignKey(
@@ -26,11 +26,23 @@ class Tweet(models.Model):
 
     @property
     def hours_to_now(self):
-        # return (datetime.datetime.now() - self.created_at).seconds / 3600
+        """
+        return (datetime.datetime.now() - self.created_at).seconds / 3600
+        """
         # TypeError: can't subtract offset-naive and offset-aware datetimes
         # This is because now() have no time zone. but created_at has time zone. 
         return (utc_now() - self.created_at).seconds / 3600
     
+    # @property
+    # def comments(self):
+    #     """
+    #     Obtain the comments of a tweet
+    #     """
+    #     return self.comment_set.all()
+    #     # return Comment.objects.filter(tweet=self)
+    
     def __str__(self):
-        # This function define the string representation while you print the instance
+        """
+        This function define the string representation while you print the instance
+        """
         return f'{self.created_at} {self.user}: {self.content}'

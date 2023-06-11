@@ -3,12 +3,17 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from newsfeeds.services import NewsFeedService
-from tweets.api.serializers import TweetSerializer, TweetSerializerForCreate
+from tweets.api.serializers import(
+    TweetSerializer,
+    TweetSerializerForCreate,
+    TweetSerializerWithComments,
+) 
 from tweets.models import Tweet
 
 
 class TweetViewSet(viewsets.GenericViewSet):
     serializer_class = TweetSerializerForCreate
+    queryset = Tweet.objects.all()
 
     def get_permissions(self):
         """
@@ -17,6 +22,14 @@ class TweetViewSet(viewsets.GenericViewSet):
         if self.action == 'list': # action can directly use the function name
             return [AllowAny()]
         return [IsAuthenticated()]
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a tweet with comments
+        GET /api/tweets/{pk}
+        """
+        tweet = self.get_object()
+        return Response(TweetSerializerWithComments(tweet).data)
 
     def list(self, request):
         """
