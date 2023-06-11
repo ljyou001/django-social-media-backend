@@ -15,7 +15,14 @@ class LikeSerializer(serializers.ModelSerializer):
         model = Like
         fields = ('id', 'user', 'created_at')
 
-class LikeSerializerForCreate(serializers.ModelSerializer):
+
+class BaseLikeSerializerForCreateAndCancel(serializers.ModelSerializer):
+    """
+    A parental class for LikeSerializerForCreate and LikeSerializerForCancel
+    with some common fields and functions
+
+    Serializer can be extended, but this doesn't works for models
+    """
     content_type = serializers.ChoiceField(choices=['tweet', 'comment'])
     object_id = serializers.IntegerField()
 
@@ -46,7 +53,10 @@ class LikeSerializerForCreate(serializers.ModelSerializer):
         if liked_object is None:
             raise ValidationError({'object_id': 'Object could not found'})
         return data
-    
+
+
+class LikeSerializerForCreate(BaseLikeSerializerForCreateAndCancel):
+
     def create(self, validated_data):
         model_class = self._get_model_class(validated_data)
         instance, _ = Like.objects.get_or_create(
@@ -55,3 +65,27 @@ class LikeSerializerForCreate(serializers.ModelSerializer):
             object_id=validated_data['object_id'],
         )
         return instance
+
+
+class LikeSerializerForCancel(BaseLikeSerializerForCreateAndCancel):
+    
+    def cancel(self):
+        """
+        Self defined function to cancel a like, 
+        So it will not be called by django just like serializer.save()
+        We need to directly call the serializer.cancel() in this case
+
+        No validated_date passed?
+        validated_data is required for create(), but for self defined functions
+        you can directly use self.validated_data 
+        as long as you called is_valid() function before
+        """
+        model_class = self._get_model_class(self.validated_data)
+        deleted, rows_count = Like.objects.filter(
+            user=self.context['request'].user,
+            content_type=ContentType.objects.get_for_model(model_class),
+            object_id=self.validated_data['object_id'],
+        ).delete()
+        return deleted, rows_count
+        # delete() doesn't return any error even if nothing was deleted
+        # However, deleted will return False in this case, since nothing was found and deleted
