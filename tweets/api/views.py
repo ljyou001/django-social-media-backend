@@ -19,7 +19,7 @@ class TweetViewSet(viewsets.GenericViewSet):
         """
         Control whether client side need to login by action function
         """
-        if self.action == 'list': # action can directly use the function name
+        if self.action in ['list', 'retrieve']: # action can directly use the function name
             return [AllowAny()]
         return [IsAuthenticated()]
     

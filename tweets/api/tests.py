@@ -7,7 +7,7 @@ from tweets.models import Tweet
 # 以防写错，最好在最上面先写好API endpoint
 TWEET_LIST_API = '/api/tweets/'
 TWEET_CREATE_API = '/api/tweets/'
-
+TWEET_RETRIVE_API = '/api/tweets/{}/'
 
 class TweetApiTests(TestCase):
 
@@ -72,3 +72,24 @@ class TweetApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['user']['id'], self.user1.id)
         self.assertEqual(Tweet.objects.count(), tweets_count + 1)
+
+    def test_retrive(self):
+        
+        # Negative test: provide a non-existed tweet id
+        url = TWEET_RETRIVE_API.format(-1)
+        response = self.anonymous_client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+        # Positive test: Check the tweet and comments 
+        tweet = self.create_tweet(self.user1)
+        url = TWEET_RETRIVE_API.format(tweet.id)
+        response = self.anonymous_client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['id'], tweet.id)
+        self.assertEqual(len(response.data['comments']), 0)
+
+        # Positive test: Add some comments
+        self.create_comment(self.user1, tweet, "comment1")
+        self.create_comment(self.user2, tweet, "comment2")
+        response = self.anonymous_client.get(url)
+        self.assertEqual(len(response.data['comments']), 2)
