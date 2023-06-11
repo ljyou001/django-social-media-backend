@@ -18,6 +18,9 @@ class UserSerializerForFriendship(UserSerializerForTweets):
 class UserSerializerForComment(UserSerializerForTweets):
     pass
 
+class UserSerializerForLikes(UserSerializerForTweets):
+    pass
+
 class LoginSerializer(serializers.Serializer):
     # 仅用来帮助检测是否有这两项，CharField里面required默认为True
     username = serializers.CharField()
