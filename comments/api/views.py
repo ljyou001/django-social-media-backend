@@ -4,13 +4,14 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from comments.api.permissions import IsObjectOwner
 from comments.api.serializers import (
     CommentSerializer,
     CommentSerializerForCreate,
     CommentSerializerForUpdate,
 )
 from comments.models import Comment
-from comments.api.permissions import IsObjectOwner
+from utils.decorators import required_params
 
 
 class CommentViewSet(viewsets.GenericViewSet):
@@ -60,6 +61,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             # 2. Less misleading error message
         return [AllowAny()]
     
+    @required_params(request_attr='query_params', params=['tweet_id'])
     def list(self, request, *args, **kwargs):
         """
         List all comments based on your tweet id
@@ -67,12 +69,19 @@ class CommentViewSet(viewsets.GenericViewSet):
 
         AllowAny is OK, no need to change the get_permissions
         """
-        if 'tweet_id' not in request.query_params:
-            return Response({
-                'success': False,
-                'message': 'tweet_id is missing',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
+        # Verify the tweet_id is exist
+        # 
+        # if 'tweet_id' not in request.query_params:
+        #     return Response({
+        #         'success': False,
+        #         'message': 'tweet_id is missing',
+        #     }, status=status.HTTP_400_BAD_REQUEST)
+        # 
+        # We can use decorator for this kind of 
+        # 1. commonly used similar pattern
+        # 2. if you want the response unified
+        # 
+
         # BEFORE django filter
         # tweet_id = request.query_params['tweet_id']
         # comments = Comment.objects.filter(tweet_id=tweet_id).order_by('-created_at')

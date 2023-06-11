@@ -3,28 +3,44 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from newsfeeds.services import NewsFeedService
-from tweets.api.serializers import TweetSerializer, TweetSerializerForCreate
+from tweets.api.serializers import (
+    TweetSerializer, 
+    TweetSerializerForCreate,
+    TweetSerializerWithComments,
+)
 from tweets.models import Tweet
+from utils.decorators import required_params
 
 
 class TweetViewSet(viewsets.GenericViewSet):
     serializer_class = TweetSerializerForCreate
+    queryset = Tweet.objects.all()
 
     def get_permissions(self):
         """
         Control whether client side need to login by action function
         """
-        if self.action == 'list': # action can directly use the function name
+        if self.action in ['list', 'retrieve']: # action can directly use the function name
             return [AllowAny()]
         return [IsAuthenticated()]
-
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a tweet with comments
+        GET /api/tweets/{pk}
+        """
+        tweet = self.get_object()
+        # MUST have queryset defined in the viewset
+        return Response(TweetSerializerWithComments(tweet).data)
+    
+    @required_params(request_attr='query_params', params=['user_id'])
     def list(self, request):
         """
         list tweets based on user id
         """
-        if 'user_id' not in request.query_params:
-            return Response(status=400)
-        
+        # if 'user_id' not in request.query_params:
+        #     return Response(status=400)
+
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id'] 
         ).order_by('-created_at')         # -: reverse
