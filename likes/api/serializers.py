@@ -10,7 +10,7 @@ from tweets.models import Tweet
 
 
 class LikeSerializer(serializers.ModelSerializer):
-    user = UserSerializerForLikes
+    user = UserSerializerForLikes()
     class Meta:
         model = Like
         fields = ('id', 'user', 'created_at')
