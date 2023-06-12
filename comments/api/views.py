@@ -101,7 +101,11 @@ class CommentViewSet(viewsets.GenericViewSet):
         # 2. it will slow down the processing
         # 3. it will take up a lot of memory
 
-        serializer = CommentSerializer(comments, many=True)
+        serializer = CommentSerializer(
+            comments, 
+            many=True,
+            context={'request': request},
+        )
         # many=True means it will return a list of Comment objects
 
         return Response({
@@ -144,7 +148,7 @@ class CommentViewSet(viewsets.GenericViewSet):
         # Data creation
         comment = serializer.save()
         return Response(
-            CommentSerializer(comment).data, 
+            CommentSerializer(comment, context={'request': request}).data, 
             status=status.HTTP_201_CREATED, 
         )
         # you can also make it status=201.
@@ -180,7 +184,7 @@ class CommentViewSet(viewsets.GenericViewSet):
         # How to save() make its decision to call update() or create()?
         # It will check the instance parameter in the serializer. 
         return Response(
-            CommentSerializer(comment).data,
+            CommentSerializer(comment, context={'request': request}).data,
             status=status.HTTP_200_OK
         )
     

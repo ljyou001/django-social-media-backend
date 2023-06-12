@@ -6,7 +6,7 @@ from newsfeeds.services import NewsFeedService
 from tweets.api.serializers import (
     TweetSerializer, 
     TweetSerializerForCreate,
-    TweetSerializerWithComments,
+    TweetSerializerForDetail,
 )
 from tweets.models import Tweet
 from utils.decorators import required_params
@@ -31,7 +31,10 @@ class TweetViewSet(viewsets.GenericViewSet):
         """
         tweet = self.get_object()
         # MUST have queryset defined in the viewset
-        return Response(TweetSerializerWithComments(tweet).data)
+        return Response(TweetSerializerForDetail(
+            tweet, 
+            context={'request': request},
+        ).data)
     
     @required_params(request_attr='query_params', params=['user_id'])
     def list(self, request):
@@ -44,7 +47,11 @@ class TweetViewSet(viewsets.GenericViewSet):
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id'] 
         ).order_by('-created_at')         # -: reverse
-        serializer = TweetSerializer(tweets, many=True) # many: a list of dict
+        serializer = TweetSerializer(
+            tweets, 
+            many=True,              # many: a list of dict
+            context={'request': request},
+        ) 
 
         return Response({'tweets': serializer.data}) 
         # we normally will not directly return a list, that's why we warpped with a dict
@@ -62,4 +69,7 @@ class TweetViewSet(viewsets.GenericViewSet):
             }, status=400)
         tweet = serializer.save() # trigger create() in serializer
         NewsFeedService.fanout_to_followers(tweet)
-        return Response(TweetSerializer(tweet).data, status=201)
+        return Response(
+            TweetSerializer(tweet, context={'request': request}).data, 
+            status=201,
+        )
