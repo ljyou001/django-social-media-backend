@@ -62,7 +62,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             # 2. Less misleading error message
         return [AllowAny()]
     
-    @required_params(request_attr='query_params', params=['tweet_id'])
+    @required_params(method='get', params=['tweet_id'])
     def list(self, request, *args, **kwargs):
         """
         List all comments based on your tweet id
