@@ -2,17 +2,23 @@ from rest_framework.response import Response
 from rest_framework import status
 from functools import wraps
 
-def required_params(request_attr='query_params', params=None):
+def required_params(method='get', params=None):
     """
     This is a decorator function to verify whether the required parms and attrs are exist,
     then response unified error ask client side to modify or proceed the normal function
 
-    :param request_attr:
+    change log:
+    request_attr has been changed to method.
+
+    # :param request_attr:
+    # string
+    # check whether the request has the attribute
+    # it is verifying whether the request is using the correct method
+
+    :param method:
     string
-    check whether the request has the attribute
-    it is verifying whether the request is using the correct method
-    By default, it is 'query_params' for GET method.
-    You can also use 'data' for POST method.
+    Check whether the request matches the required method
+    By default, it is 'query_params' for GET method, 'data' for POST method.
 
     :param params:
     list of string
@@ -43,7 +49,10 @@ def required_params(request_attr='query_params', params=None):
             request: the request object directly passed to the view_func
             *args, **kwargs: the arguments directly passed to the view_func
             """
-            data = getattr(request, request_attr)
+            if method.lower() == 'get':
+                data = request.query_params
+            elif method.lower() == 'post':
+                data = request.data
             missing_params = [
                 param                       # what do you want
                 for param in params         # how to iterate

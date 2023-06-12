@@ -36,7 +36,7 @@ class TweetViewSet(viewsets.GenericViewSet):
             context={'request': request},
         ).data)
     
-    @required_params(request_attr='query_params', params=['user_id'])
+    @required_params(method='get', params=['user_id'])
     def list(self, request):
         """
         list tweets based on user id

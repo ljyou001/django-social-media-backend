@@ -22,7 +22,7 @@ class LikeViewSet(viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated,)
     serializer_class = LikeSerializerForCreate
 
-    @required_params(request_attr='data', params=['content_type', 'object_id'])
+    @required_params(method='post', params=['content_type', 'object_id'])
     def create(self, request, *args, **kwargs):
         """
         Create a new like
@@ -51,7 +51,7 @@ class LikeViewSet(viewsets.GenericViewSet):
         )
     
     @action(methods=['post'], detail=False)
-    @required_params(request_attr='data', params=['content_type', 'object_id'])
+    @required_params(method='post', params=['content_type', 'object_id'])
     def cancel(self, request, *arg, **kwarg):
         """
         Cancel a like based on content_type and object_id
