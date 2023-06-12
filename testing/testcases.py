@@ -60,3 +60,17 @@ class TestCase(DjangoTestCase):
         # model's class name have no record in database
         # Therefore, we need to use get_for_model()  to find the record in db according to the name
         # Then, you will find the correct ContentType in DB
+
+    def create_user_and_client(self, *args, **kwargs):
+        """
+        This function will create user and client at the same time using the create_user fucntion above
+
+        :param args and kwargs:
+        same as create_user function
+        :return:
+        a user model object and a APIClient logged in with the user
+        """
+        user = self.create_user(*args, **kwargs)
+        client = APIClient()
+        client.force_authenticate(user)
+        return user, client
