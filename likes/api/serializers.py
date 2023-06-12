@@ -57,14 +57,18 @@ class BaseLikeSerializerForCreateAndCancel(serializers.ModelSerializer):
 
 class LikeSerializerForCreate(BaseLikeSerializerForCreateAndCancel):
 
-    def create(self, validated_data):
-        model_class = self._get_model_class(validated_data)
-        instance, _ = Like.objects.get_or_create(
+    def get_or_create(self):
+        """
+        Why changed this name from create() to get_or_create()
+        After we added the NotificationService to like
+        To avoid duplicate notification, we need to know whether the like was created
+        """
+        model_class = self._get_model_class(self.validated_data)
+        return Like.objects.get_or_create(
             user=self.context['request'].user,
             content_type=ContentType.objects.get_for_model(model_class),
-            object_id=validated_data['object_id'],
+            object_id=self.validated_data['object_id'],
         )
-        return instance
 
 
 class LikeSerializerForCancel(BaseLikeSerializerForCreateAndCancel):

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework',
     "debug_toolbar",
     'django_filters',
+    'notifications',
 
     # project apps
     'tweets',
@@ -50,7 +51,13 @@ INSTALLED_APPS = [
     'newsfeeds',
     'comments',
     'likes',
+    'inbox',
 ]
+
+DEFAULT_AUTO_FIELD='django.db.models.AutoField'
+# Django upgraded as django-notification installed
+# To supress warning messages about Auto-created primary key
+# We need to add this line
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
