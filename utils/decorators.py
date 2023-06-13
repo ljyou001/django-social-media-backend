@@ -51,7 +51,7 @@ def required_params(method='get', params=None):
             """
             if method.lower() == 'get':
                 data = request.query_params
-            elif method.lower() == 'post':
+            elif method.lower() in ['post', 'put', 'patch']:
                 data = request.data
             missing_params = [
                 param                       # what do you want
