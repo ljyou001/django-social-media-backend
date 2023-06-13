@@ -39,7 +39,6 @@ class NewsFeedTestCase(TestCase):
         # Normal Case: nothing in the database
         response = self.user1_client.get(NEWSFEEDS_URL)
         self.assertEqual(response.status_code, 200)
-        print(response.data)
         self.assertEqual(len(response.data['newsfeeds']), 0)
 
         # Normal Case: You can see your own tweets in the newsfeed
