@@ -2,6 +2,7 @@
 .vagrant
 Vagrantfile
 mysql-apt-config*
+media
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     'notifications',
 
     # project apps
+    'accounts', # we did not add this previously because there is no model in it
     'tweets',
     'friendships',
     'newsfeeds',
@@ -153,6 +155,43 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# Normally we don't want to put the file into the base directory of the project
+# Then we need to define the MEDIA_ROOT
+# Try again after you defined this.
+# MEDIA_ROOT = BASE_DIR / 'media'
+# Commented this because django storage deployed
+
+# Then adding MEDIA_URL to allow the user to access the media files
+# MEDIA_URL = '/media/'
+#
+# Not recommended in production!
+# We want the web server to be stateless
+# which means it should not preserve files
+# When the server is died, the files can still be accessed.
+#
+# One step further: Can we directly use DB to store files?
+# Don't do that. DB should only store structured data rather than blob files.
+# Normally we store the files in the AWS s3 or Azure blob storage
+
+# So, here we use django-storage to link AWS s3
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+TESTING = ((" ".join(sys.argv)).find('namage.py test') != -1) 
+# This will allow django to know it is the test env now.
+# python manage.py test
+if TESTING:
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    # Why do this?
+    # 1. To save the time of the unit time
+    # 2. Causing unexpected error due to the 3rd party 
+    # That's why Unit test should not have external dependencies such as AWS
+AWS_STORAGE_BUCKET_NAME = 'django-twitter'
+AWS_S3_REGION_NAME = 'ap-tokyo-1'
+# Also, you need to add the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+AWS_S3_ENDPOINT_URL = 'https://nrzfbjgus5of.compat.objectstorage.ap-tokyo-1.oraclecloud.com'
+AWS_ACCESS_KEY_ID = 'youraccesskey'
+AWS_SECRET_ACCESS_KEY = 'yoursecretkey'
+
 
 # This is how to import local settings in django
 try:

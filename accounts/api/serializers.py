@@ -72,4 +72,7 @@ class SignupSerializer(serializers.ModelSerializer):
         # Go check the source code of create_user
         # In _create_user, you can see the password processing. set_password(password)
         
+        user.profile
+        # Create user profile
+        
         return user
