@@ -18,3 +18,5 @@ TWEET_PHOTO_STATUS_CHOICES = (
 # touple of touple
 # First level touple means the choices you can make
 # Second level touple means (value of this choice, information in admin panel) 
+
+TWEET_PHOTOS_UPLOAD_LIMIT = 4
