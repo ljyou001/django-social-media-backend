@@ -1,3 +1,5 @@
+from django.core.files.uploadedfile import \
+    SimpleUploadedFile  # To upload file in test
 from rest_framework.test import APIClient
 
 from accounts.models import UserProfile
@@ -7,6 +9,7 @@ LOGIN_URL = '/api/accounts/login/'
 LOGOUT_URL = '/api/accounts/logout/'
 SIGNUP_URL = '/api/accounts/signup/'
 LOGIN_STATUS_URL = '/api/accounts/login_status/'
+USER_PROFILE_DETAIL_URL = '/api/profiles/{}/'
 
 
 class AccountApiTests(TestCase):
@@ -121,3 +124,62 @@ class AccountApiTests(TestCase):
         # 验证用户已经登入
         response = self.client.get(LOGIN_STATUS_URL)
         self.assertEqual(response.data['has_logged_in'], True)
+
+
+class UserProfileAPITests(TestCase):
+    def test_update(self):
+        user1, user1_client = self.create_user_and_client('user1')
+        profile = user1.profile
+        profile.nickname = 'old nickname'
+        profile.save()
+        url = USER_PROFILE_DETAIL_URL.format(profile.id)
+
+        # Negative case: update cannot be operated by the anonymous user
+        response = self.anonymous_client.put(url, {
+            'nickname': 'new nickname',
+        })
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.data['detail'], 
+            'Authentication credentials were not provided.',
+        )
+        profile.refresh_from_db()
+        self.assertEqual(profile.nickname, 'old nickname')
+
+        # Negative case: update cannot be operated by the others
+        _, user2_client = self.create_user_and_client('user2')
+        response = user2_client.put(url, {
+            'nickname': 'new nickname',
+        })
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.data['detail'], 
+            'You are not the owner of this object.',
+        )
+        profile.refresh_from_db()
+        self.assertEqual(profile.nickname, 'old nickname')
+
+        # Positive case: update can be operated by the owner
+        response = user1_client.put(url, {
+            'nickname': 'new nickname',
+        })
+        self.assertEqual(response.status_code, 200)
+        profile.refresh_from_db()
+        self.assertEqual(profile.nickname, 'new nickname')
+
+        # Positive case: update avatar
+        response = user1_client.put(url, {
+            'avatar': SimpleUploadedFile(
+                name='my-avatar.png',
+                content=str.encode('a fake image'),
+                content_type='image/png',
+            ),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual('my-avatar' in response.data['avatar'], True)
+        # Why not my-avatar.png?
+        # To avoid different users uploading files with same name
+        # Django will add a postfix to the file name
+        # So, inside the bucket, my-avatar.png might not named as my-avatar.png
+        profile.refresh_from_db()
+        self.assertIsNotNone(profile.avatar)

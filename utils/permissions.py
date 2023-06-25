@@ -17,7 +17,7 @@ class IsObjectOwner(BasePermission):
     
     """
 
-    message = 'You are not the owner of this object'
+    message = 'You are not the owner of this object.'
 
     def has_permission(self, request, view):
         return True
