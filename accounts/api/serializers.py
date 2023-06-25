@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
-from rest_framework import serializers, exceptions
+from rest_framework import exceptions, serializers
+
+from accounts.models import UserProfile
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -7,19 +9,44 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email')
 
-class UserSerializerForTweets(serializers.ModelSerializer):
+
+class UserSerializerWithProfile(serializers.ModelSerializer):
+    nickname = serializers.CharField(source='profile.nickname')
+    # this means when you passed a user instance to the serializer
+    # it will access user.profile.nickname
+    avatar_url = serializers.SerializerMethodField()
+
+    def get_avatar_url(self, obj):
+        if obj.profile.avatar:
+            return obj.profile.avatar.url
+        return None
+    
     class Meta:
         model = User
-        fields = ('id', 'username')
+        fields = ('id', 'username', 'nickname', 'avatar_url')
 
-class UserSerializerForFriendship(UserSerializerForTweets):
+
+class UserProfileSerializerForUpdate(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ('nickname', 'avatar')
+
+
+class UserSerializerForTweets(UserSerializerWithProfile):
     pass
 
-class UserSerializerForComment(UserSerializerForTweets):
+
+class UserSerializerForFriendship(UserSerializerWithProfile):
     pass
 
-class UserSerializerForLikes(UserSerializerForTweets):
+
+class UserSerializerForComment(UserSerializerWithProfile):
     pass
+
+
+class UserSerializerForLikes(UserSerializerWithProfile):
+    pass
+
 
 class LoginSerializer(serializers.Serializer):
     # 仅用来帮助检测是否有这两项，CharField里面required默认为True

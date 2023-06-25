@@ -9,8 +9,12 @@ from rest_framework.response import Response
 from accounts.api.serializers import (
     LoginSerializer, 
     SignupSerializer,
+    UserProfileSerializerForUpdate,
     UserSerializer,
+    UserSerializerWithProfile,
 )
+from accounts.models import UserProfile
+from utils.permissions import IsObjectOwner
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -19,9 +23,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = User.objects.all().order_by('-date_joined')
     # 从哪里去获取数据
-    serializer_class = UserSerializer
+    serializer_class = UserSerializerWithProfile
     # 确认数据+转换json+默认表单
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAdminUser, )
+                          
 
 # ModelViewSet: 一般是model一一对应，默认支持增删查改(list,retrive,put,patch,delete)
 # 如果不想要这么全的话，可以用ReadOnlyModelViewSet
@@ -105,3 +110,14 @@ class AccountViewSet(viewsets.ViewSet):
             'success': True,
             'user': UserSerializer(user).data,
         }, status=201)
+    
+class UserProfileViewSet(
+    viewsets.GenericViewSet,
+    viewsets.mixins.UpdateModelMixin, # PUT /api/profiles/<id>
+):
+    """
+    API endpoint that allows users profile to be viewed or edited.
+    """
+    queryset = UserProfile
+    permission_classes = (permissions.IsAuthenticated, IsObjectOwner)
+    serializer_class = UserProfileSerializerForUpdate

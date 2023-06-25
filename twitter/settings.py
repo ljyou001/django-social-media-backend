@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 
 from pathlib import Path
 import sys
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -176,7 +177,7 @@ STATIC_URL = '/static/'
 
 # So, here we use django-storage to link AWS s3
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-TESTING = ((" ".join(sys.argv)).find('namage.py test') != -1) 
+TESTING = ((" ".join(sys.argv)).find('mamage.py test') != -1) 
 # This will allow django to know it is the test env now.
 # python manage.py test
 if TESTING:
@@ -189,8 +190,8 @@ AWS_STORAGE_BUCKET_NAME = 'django-twitter'
 AWS_S3_REGION_NAME = 'ap-tokyo-1'
 # Also, you need to add the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 AWS_S3_ENDPOINT_URL = 'https://nrzfbjgus5of.compat.objectstorage.ap-tokyo-1.oraclecloud.com'
-AWS_ACCESS_KEY_ID = 'youraccesskey'
-AWS_SECRET_ACCESS_KEY = 'yoursecretkey'
+AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
+AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
 
 
 # This is how to import local settings in django

@@ -29,6 +29,7 @@ class UserProfile(models.Model):
     # Suggest to use FileField
     # ImageField in Django could lead to some problems
     # FileField will store avatar in the filesystem as file, then you can access them through URL
+    # FileField have a "url" property already provided
 
     nickname = models.CharField(max_length=200, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
