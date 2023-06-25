@@ -1,7 +1,8 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from testing.testcases import TestCase
-from tweets.models import Tweet
+from tweets.models import Tweet, TweetPhoto
 
 # 注意要加 '/' 结尾，要不然会产生 301 redirect
 # 以防写错，最好在最上面先写好API endpoint
@@ -94,3 +95,88 @@ class TweetApiTests(TestCase):
         self.create_comment(self.user1, self.create_tweet(self.user2), "comment3")
         response = self.anonymous_client.get(url)
         self.assertEqual(len(response.data['comments']), 2)
+
+    def test_create_with_files(self):
+        # Positive test: Create a tweet with without file arrtibute
+        # To compatible old version API
+        response = self.user1_client.post(TWEET_CREATE_API, {
+            'content': 'Hello World, this is my first tweet!'
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TweetPhoto.objects.count(), 0)
+
+        # Positive test: Create a tweet with no file
+        response = self.user1_client.post(TWEET_CREATE_API, {
+            'content': 'Hello World, this is my second tweet!',
+            'files': []
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TweetPhoto.objects.count(), 0)
+
+        # Negative case: Upload file not using the list
+        file = SimpleUploadedFile(
+            name='selfie.png',
+            content=str.encode('a fake photo'),
+            content_type='image/png'
+        )
+        response = self.user1_client.post(TWEET_CREATE_API, {
+            'content': 'Hello World, this is my first tweet!',
+            'files': file,
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TweetPhoto.objects.count(), 1)
+
+        # Positive case: Upload 1 file
+        file = SimpleUploadedFile(
+            name='selfie.png',
+            content=str.encode('a fake photo'),
+            content_type='image/png'
+        )
+        response = self.user1_client.post(TWEET_CREATE_API, {
+            'content': 'Hello World, this is my first tweet!',
+            'files': [file],
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TweetPhoto.objects.count(), 2)
+
+        # Positive case: Upload multiple files
+        file1 = SimpleUploadedFile(
+            name='selfie1.png',
+            content=str.encode('selfie 1'),
+            content_type='image/png'
+        )
+        file2 = SimpleUploadedFile(
+            name='selfie2.png',
+            content=str.encode('selfie 2'),
+            content_type='image/png'
+        )
+        response = self.user1_client.post(TWEET_CREATE_API, {
+            'content': 'I am uploading 2 files!',
+            'files': [file1, file2],
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(TweetPhoto.objects.count(), 4)
+
+        # Positive case: Retrieve the created tweet with photo urls
+        retrive_url = TWEET_RETRIVE_API.format(response.data['id'])
+        response = self.anonymous_client.get(retrive_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['photo_urls']), 2)
+        self.assertEqual('selfie1' in response.data['photo_urls'][0], True)
+        self.assertEqual('selfie2' in response.data['photo_urls'][1], True)
+
+        # Negative case: Upload too many files
+        files = [
+            SimpleUploadedFile(
+                name=f'selfie{i}.png',
+                content=str.encode(f'selfie{i}'),
+                content_type='image/png'
+            )
+            for i in range(5)
+        ]
+        response = self.user1_client.post(TWEET_CREATE_API, {
+            'content': 'I am uploading too many files',
+            'files': files
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(TweetPhoto.objects.count(), 4)
