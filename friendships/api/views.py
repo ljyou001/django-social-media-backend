@@ -8,13 +8,13 @@ from friendships.api.serializers import (FollowerSerializer,
                                          FollowingSerializer,
                                          FriendshipSerializerForCreate)
 from friendships.models import Friendship
-from utils.paginations import FriendshipPagination
+from utils.paginations import PageNumberPagination
 
 
 class FriendshipViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = FriendshipSerializerForCreate
-    pagination_class = FriendshipPagination
+    pagination_class = PageNumberPagination
 
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
     def followers(self, request, pk):
