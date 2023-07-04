@@ -3,6 +3,7 @@ from rest_framework.test import APIClient
 from friendships.models import Friendship
 from newsfeeds.models import NewsFeed
 from testing.testcases import TestCase
+from utils.paginations import EndlessPagination
 
 NEWSFEEDS_URL = '/api/newsfeeds/'
 POST_TWEETS_URL = '/api/tweets/'
@@ -39,13 +40,13 @@ class NewsFeedTestCase(TestCase):
         # Normal Case: nothing in the database
         response = self.user1_client.get(NEWSFEEDS_URL)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['newsfeeds']), 0)
+        self.assertEqual(len(response.data['results']), 0)
 
         # Normal Case: You can see your own tweets in the newsfeed
         self.user1_client.post(POST_TWEETS_URL, {'content': 'hello'})
         response = self.user1_client.get(NEWSFEEDS_URL)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['newsfeeds']), 1)
+        self.assertEqual(len(response.data['results']), 1)
 
         # Normal Case: You can also see followings tweets
         self.user1_client.post(FOLLOW_URL.format(self.user2.id))
@@ -55,5 +56,76 @@ class NewsFeedTestCase(TestCase):
         posted_tweet_id = response.data['id']
         response = self.user1_client.get(NEWSFEEDS_URL)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['newsfeeds']), 2)
-        self.assertEqual(response.data['newsfeeds'][0]['tweet']['id'], posted_tweet_id)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(response.data['results'][0]['tweet']['id'], posted_tweet_id)
+
+    def test_pagination(self):
+        page_size = EndlessPagination.page_size
+        max_upside_paginate = EndlessPagination.max_upside_paginate
+        
+        followed_user = self.create_user('followed')
+        newsfeeds = []
+        for i in range(page_size * 2):
+            tweet = self.create_tweet(followed_user, f'tweet{i}')
+            newsfeed = self.create_newsfeed(self.user1, tweet)
+            newsfeeds.append(newsfeed)
+        newsfeeds = newsfeeds[::-1]
+
+        # Pull the 1st page
+        response = self.user1_client.get(NEWSFEEDS_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['has_next_page'], True)
+        self.assertEqual(response.data['beyond_upside_paginate'], False)
+        self.assertEqual(len(response.data['results']), page_size)
+        self.assertEqual(response.data['results'][0]['id'], newsfeeds[0].id)
+        self.assertEqual(response.data['results'][1]['id'], newsfeeds[1].id)
+        self.assertEqual(
+            response.data['results'][page_size - 1]['id'], 
+            newsfeeds[page_size - 1].id,
+        )
+
+        # Pull the 2nd page
+        response = self.user1_client.get(NEWSFEEDS_URL, {
+            'created_at__lt': newsfeeds[page_size - 1].created_at
+        })
+        self.assertEqual(response.data['has_next_page'], False)
+        self.assertEqual(response.data['beyond_upside_paginate'], False)
+        self.assertEqual(response.data['results'][0]['id'], newsfeeds[page_size].id)
+        self.assertEqual(response.data['results'][1]['id'], newsfeeds[page_size + 1].id)
+        self.assertEqual(response.data['results'][page_size - 1]['id'], newsfeeds[2 * page_size - 1].id)
+
+        # Upside pull the latest 
+        response = self.user1_client.get(NEWSFEEDS_URL, {
+            'created_at__gt': newsfeeds[0].created_at,
+        })
+        self.assertEqual(response.data['has_next_page'], False)
+        self.assertEqual(response.data['beyond_upside_paginate'], False)
+        self.assertEqual(len(response.data['results']), 0)
+
+        # One new newsfeed
+        new_tweet = self.create_tweet(self.user1, 'a new tweet')
+        new_newsfeed = self.create_newsfeed(self.user1, new_tweet)
+        response = self.user1_client.get(NEWSFEEDS_URL, {
+            'created_at__gt': newsfeeds[0].created_at,
+        })
+        self.assertEqual(response.data['has_next_page'], False)
+        self.assertEqual(response.data['beyond_upside_paginate'], False)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], new_newsfeed.id)
+
+        # Too many new newsfeeds
+        new_newsfeeds = []
+        for i in range(max_upside_paginate + 2):
+            tweet = self.create_tweet(followed_user, f'tweet{i}')
+            newsfeed = self.create_newsfeed(self.user1, tweet)
+            new_newsfeeds.append(newsfeed)
+        new_newsfeeds = new_newsfeeds[::-1]
+        response = self.user1_client.get(NEWSFEEDS_URL, {
+            'created_at__gt': newsfeeds[0].created_at,
+        })
+        self.assertEqual(response.data['has_next_page'], True)
+        self.assertEqual(response.data['beyond_upside_paginate'], True)
+        self.assertEqual(len(response.data['results']), page_size)
+        self.assertEqual(response.data['results'][0]['id'], new_newsfeeds[0].id)
+        self.assertEqual(response.data['results'][1]['id'], new_newsfeeds[1].id)
+        self.assertEqual(response.data['results'][page_size - 1]['id'], new_newsfeeds[page_size - 1].id)
