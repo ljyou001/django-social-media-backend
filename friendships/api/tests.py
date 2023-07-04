@@ -2,7 +2,7 @@ from rest_framework.test import APIClient
 
 from friendships.models import Friendship
 from testing.testcases import TestCase
-from utils.paginations import FriendshipPagination
+from utils.paginations import PageNumberPagination
 
 FOLLOW_URL = '/api/friendships/{}/follow/'
 UNFOLLOW_URL = '/api/friendships/{}/unfollow/'
@@ -184,8 +184,8 @@ class FriendshipApiTests(TestCase):
         This test function will test pagination and our new added "has_followed" field
         """
         # Know the pagination configurations
-        max_page_size = FriendshipPagination.max_page_size
-        page_size = FriendshipPagination.page_size
+        max_page_size = PageNumberPagination.max_page_size
+        page_size = PageNumberPagination.page_size
 
         # Set ups for the test
         for i in range(page_size * 2):
@@ -221,8 +221,8 @@ class FriendshipApiTests(TestCase):
         This test function will test pagination and our new added "has_followed" field
         """
         # Know the pagination configurations
-        max_page_size = FriendshipPagination.max_page_size
-        page_size = FriendshipPagination.page_size
+        max_page_size = PageNumberPagination.max_page_size
+        page_size = PageNumberPagination.page_size
 
         # Set ups for the test
         for i in range(page_size * 2):
