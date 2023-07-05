@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import caches
 from django.test import TestCase as DjangoTestCase
 from rest_framework.test import APIClient
 
@@ -10,6 +11,16 @@ from tweets.models import Tweet
 
 
 class TestCase(DjangoTestCase):
+
+    def clear_cache(self):
+        """
+        This is to clean up the cache in memcached and create a clear testing env for tests.
+
+        Why? 
+        This is because django will not create new and reset the cache after each test.
+        This is different from the purely DB related tests.
+        """
+        caches['testing'].clear()
 
     @property
     def anonymous_client(self):

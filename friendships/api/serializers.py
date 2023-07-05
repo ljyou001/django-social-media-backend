@@ -7,7 +7,28 @@ from friendships.models import Friendship
 from friendships.services import FriendshipService
 
 
-class FollowerSerializer(serializers.ModelSerializer):
+class FollowingUserIdSetMixin:
+    """
+    This Mixin to get the following user id set
+
+    Mixin means a plugin
+    """
+    @property
+    def following_user_id_set(self: serializers.ModelSerializer):
+        if self.context['request'].user.is_anonymous:
+            return {}
+        if hasattr(self, '_cached_following_user_id_set'):
+            # attr is a kind of cache in object level, in memory, but not memcached powered
+            # it is because python can add or set attrbutes of class at anywhere and anytime
+            return self._cached_following_user_id_set 
+        user_id_set = FriendshipService.get_following_user_id_set(
+            self.context['request'].user.id
+        )
+        setattr(self, '_cached_following_user_id_set', user_id_set)
+        return user_id_set
+
+
+class FollowerSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
     user = UserSerializerForFriendship(source='from_user')
     # source='' can directly access model field and property function
     has_followed = serializers.SerializerMethodField()
@@ -17,14 +38,12 @@ class FollowerSerializer(serializers.ModelSerializer):
         fields = ('user', 'created_at', 'has_followed')
 
     def get_has_followed(self, obj):
-        if self.context['request'].user.is_anonymous:
-            return False
-        return FriendshipService.has_followed(self.context['request'].user, obj.from_user)
-        # Utilize required: this will generate 1 SQL Query for each user
-        # We will utilize this part afterward using cache
+        # As we said before, here is the implementation of cached version
+        # following_user_id_set is extended from FollowingUserIdSetMixin
+        return obj.from_user_id in self.following_user_id_set
 
 
-class FollowingSerializer(serializers.ModelSerializer):
+class FollowingSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
     user = UserSerializerForFriendship(source='to_user')
     has_followed = serializers.SerializerMethodField()
 
@@ -33,9 +52,7 @@ class FollowingSerializer(serializers.ModelSerializer):
         fields = ('user', 'created_at', 'has_followed')
 
     def get_has_followed(self, obj):
-        if self.context['request'].user.is_anonymous:
-            return False
-        return FriendshipService.has_followed(self.context['request'].user, obj.to_user)
+        return obj.to_user_id in self.following_user_id_set
 
 
 class FriendshipSerializerForCreate(serializers.ModelSerializer):
