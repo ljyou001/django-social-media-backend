@@ -8,6 +8,7 @@ from friendships.api.serializers import (FollowerSerializer,
                                          FollowingSerializer,
                                          FriendshipSerializerForCreate)
 from friendships.models import Friendship
+from friendships.services import FriendshipService
 from utils.paginations import PageNumberPagination
 
 
@@ -70,6 +71,12 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         instance = serializer.save()
+        # FriendshipService.invalidate_following_cache(request.user.id)
+        # # Manually invalidate the following cache for any changes
+        # # Disadvantage: 
+        # # 1. if we forget to add this line of code for some functions, cache will not be invalided
+        # # 2. Also, this cannot be applied via admin panel
+        # # To solve the both problem, we can add signal to the Friendship model -> go and checkout
         return Response(
             FollowingSerializer(instance, context={'request': request}).data, 
             status=status.HTTP_201_CREATED,
@@ -99,7 +106,8 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         # 1. Don't use JOIN: O(n^2) the whole step, mem is also big
         # 2. Don't use CASCADE
         # 3. Drop Foreign key constraint, use int/str id directly instead
-
+        
+        # FriendshipService.invalidate_following_cache(request.user.id)
         return Response({
             'success': True,
             'deleted': deleted,
