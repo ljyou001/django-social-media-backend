@@ -44,6 +44,9 @@ class FriendshipService(object):
     
     @classmethod
     def has_followed(cls, from_user, to_user):
+        """
+        This function is useless after we added the following functions
+        """
         return Friendship.objects.filter(
             from_user=from_user, 
             to_user=to_user

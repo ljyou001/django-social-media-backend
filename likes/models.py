@@ -3,12 +3,16 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from accounts.services import UserService
+
 
 class Like(models.Model):
     """
     Model class for tweet like and comment like
     """
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    # Since user is now a cached model, 
+    # we need to check all possible models that used User as ForeignKey
     
     # Check here: how to associate foreign key with two similar models
     # https://docs.djangoproject.com/en/4.2/ref/contrib/contenttypes/#generic-relations
@@ -39,3 +43,11 @@ class Like(models.Model):
             self.content_object,
             self.object_id,
         )
+    
+    @property
+    def cached_user(self):
+        return UserService.get_user_through_cache(self.user_id)
+    # Here comes a question:
+    # What method should be in the serializer, and what methods should be in the model?
+    # If you want to easily access the data, from model layer, it should be in the model
+    # Normally, code is not too long 

@@ -3,6 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 # from comments.models import Comment
+from accounts.services import UserService
 from likes.models import Like
 from utils.time_helper import utc_now
 from tweets.constants import TweetPhotoStatus, TWEET_PHOTO_STATUS_CHOICES
@@ -60,6 +61,10 @@ class Tweet(models.Model):
         This function define the string representation while you print the instance
         """
         return f'{self.created_at} {self.user}: {self.content}'
+    
+    @property
+    def cached_user(self):
+        return UserService.get_user_through_cache(self.user_id)
     
 
 class TweetPhoto(models.Model):

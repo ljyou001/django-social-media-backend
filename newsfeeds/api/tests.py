@@ -12,6 +12,10 @@ FOLLOW_URL = '/api/friendships/{}/follow/'
 class NewsFeedTestCase(TestCase):
 
     def setUp(self):
+        self.clear_cache()
+        # Always clear_cache before any test
+        # Otherwise, it will be extremely difficult to debug if this fails
+
         self.user1 = self.create_user('user1')
         self.user1_client = APIClient()
         self.user1_client.force_authenticate(self.user1)
@@ -129,3 +133,34 @@ class NewsFeedTestCase(TestCase):
         self.assertEqual(response.data['results'][0]['id'], new_newsfeeds[0].id)
         self.assertEqual(response.data['results'][1]['id'], new_newsfeeds[1].id)
         self.assertEqual(response.data['results'][page_size - 1]['id'], new_newsfeeds[page_size - 1].id)
+
+    def test_user_cache(self):
+        """
+        The idea of this test is mainly to test the following chain:
+        newsfeeds -> tweet -> user -> profile
+        If profile has been changed, data through the chain can be updated
+        """
+        u2_profile = self.user2.profile
+        u2_profile.nickname = 'user2 nickname'
+        u2_profile.save()
+
+        self.assertEqual(self.user2.username, 'user2')
+        self.create_newsfeed(self.user2, self.create_tweet(self.user1))
+        self.create_newsfeed(self.user2, self.create_tweet(self.user2))
+
+        response = self.user2_client.get(NEWSFEEDS_URL)
+        results = response.data['results']
+        self.assertEqual(results[0]['tweet']['user']['username'], 'user2')
+        self.assertEqual(results[0]['tweet']['user']['nickname'], 'user2 nickname')
+        self.assertEqual(results[1]['tweet']['user']['username'], 'user1')
+
+        self.user1.username = 'user1_new'
+        self.user1.save()
+        u2_profile.nickname = 'user2_new_nickname'
+        u2_profile.save()
+
+        response = self.user2_client.get(NEWSFEEDS_URL)
+        results = response.data['results']
+        self.assertEqual(results[0]['tweet']['user']['username'], 'user2')
+        self.assertEqual(results[0]['tweet']['user']['nickname'], 'user2_new_nickname')
+        self.assertEqual(results[1]['tweet']['user']['username'], 'user1_new')
