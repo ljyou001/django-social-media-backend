@@ -5,7 +5,7 @@ from tweets.api.serializers import TweetSerializer
 
 
 class NewsFeedSerializer(serializers.ModelSerializer):
-    tweet = TweetSerializer()
+    tweet = TweetSerializer(source='cached_tweet')
     # Since NewsFeedSerializer used TweetSerializer, a context should be passed
     # NewsFeedSerializer cannot have the context directly, so we need to search it
     # and add the context to its viewsets
