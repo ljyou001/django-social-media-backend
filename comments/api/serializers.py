@@ -9,7 +9,7 @@ from tweets.models import Tweet
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = UserSerializerForComment()
+    user = UserSerializerForComment(source='cached_user')
     # Remember: if you don't use UserSerializer() here
     # user will shown as its pid, rather than contain the fields in UserSerializer
     # 

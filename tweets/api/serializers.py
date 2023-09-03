@@ -12,7 +12,7 @@ from tweets.models import Tweet
 
 
 class TweetSerializer(serializers.ModelSerializer):
-    user = UserSerializerForTweets()
+    user = UserSerializerForTweets(source='cached_user')
     # If you don't import UserSerializer, the user is just a int, cannot get into it
     # Also, this must be instancelized using the ()
     # Otherwise, django will not render output in the UserSerializerForTweets's way

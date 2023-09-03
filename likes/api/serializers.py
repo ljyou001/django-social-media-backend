@@ -9,11 +9,30 @@ from likes.models import Like
 from tweets.models import Tweet
 
 
+
 class LikeSerializer(serializers.ModelSerializer):
-    user = UserSerializerForLikes()
+    # # user = UserSerializerForLikes()
+    # # To let the user obtain data from cache
+    # # One way is to use the serializer method:
+    # user = serializers.SerializerMethodField()
+    # # Another way is to use the source:
+    user = UserSerializerForLikes(source='cached_user')
+    # Souce must defined in the model of this serializer, 
+    # for this one, it should be likes.model
+    # It allows you to access the object through the function operation directly
+
     class Meta:
         model = Like
         fields = ('id', 'user', 'created_at')
+
+    # def get_user(self, obj):
+    #     from accounts.services import UserService
+    #     user = UserService.get_user_through_cache(obj.user_id)
+    #     return UserSerializerForLikes(user).data
+    #     # Why user_id rather than user.id?
+    #     # user_id can access the user's ID directly
+    #     # If user.id, then it will obtain the user object first, 
+    #     # which means it already have DB requests
 
 
 class BaseLikeSerializerForCreateAndCancel(serializers.ModelSerializer):

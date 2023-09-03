@@ -1,5 +1,9 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models.signals import post_save, pre_delete
+
+# from accounts.services import UserService # NO! circular import!
+from accounts.listeners import profile_changed, user_changed
 
 
 class UserProfile(models.Model):
@@ -59,6 +63,9 @@ def get_profile(user):
     If you want to add property to dependent models
     you can use this method
     """
+    from accounts.services import UserService  
+    # to avoid circular import
+
     if hasattr(user, '_cached_user_profile'):
     # We added a instance level cache here (user, '_cached_user_profile')
     # which means _cached_user_profile is following the user instance(object)
@@ -66,9 +73,11 @@ def get_profile(user):
         return getattr(user, '_cached_user_profile')
         # return user._cached_user_profile 
         # same but not recommended, as it is a protected variable, normally don't access directly
-    profile, _ = UserProfile.objects.get_or_create(user=user)
-    # Otherwise, go to the database, get_or_create the data for this user
-    # Considering some user may have no profile, that's why we need to create
+    profile = UserService.get_profile_through_cache(user.id)
+    # As cache has been added into the service, so we commented the following code:
+    # profile, _ = UserProfile.objects.get_or_create(user=user)
+    # # Otherwise, go to the database, get_or_create the data for this user
+    # # Considering some user may have no profile, that's why we need to create
     setattr(user, '_cached_user_profile', profile)
     # Then, setattr according to the profile from the database
     return profile
@@ -77,3 +86,11 @@ def get_profile(user):
 
 
 User.profile = property(get_profile)
+
+pre_delete.connect(user_changed, sender=User)
+# Will be triggered while deletion
+post_save.connect(user_changed, sender=User)
+# Will be triggered while changes and create
+
+pre_delete.connect(profile_changed, sender=UserProfile)
+post_save.connect(profile_changed, sender=UserProfile)

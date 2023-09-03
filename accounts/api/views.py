@@ -48,6 +48,8 @@ class AccountViewSet(viewsets.ViewSet):
         }
         if request.user.is_authenticated:
             data['user'] = UserSerializer(request.user).data
+            # This API can use cached_user, but not must
+            # Cuz this user is already in the request and it can be accessed from memory
         return Response(data)
     
     @action(methods=['post'], detail=False)

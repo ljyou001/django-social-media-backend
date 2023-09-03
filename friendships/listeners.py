@@ -9,7 +9,7 @@ def invalidate_following_cache(sender, instance, **kwargs):
     """
     from friendships.services import FriendshipService
     # Why import here? 
-    # If it is outside of this function, there will be an error of looping reference
+    # If it is outside of this function, there will be an error of circular import
     # Cuz FriendshipService will import friendships.models, and 
     # friendships.models will import this invalidate_following_cache
     # That's why we normally put this import into the function.
