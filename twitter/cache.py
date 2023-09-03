@@ -15,7 +15,6 @@ FOLLOWING_PATTERN = 'followings:{user_id}'
 # 1. memcached is not natively support for set, so it is better to save objects
 # 2. User and Profile model will not be changed so easily, therefore, it can have a over 98% hit rate
 
-USER_PATTERN = 'user:{user_id}'
 USER_PROFILE_PATTERN = 'userprofile:{user_id}'
 
 # redis

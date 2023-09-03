@@ -3,7 +3,8 @@ from django.db import models
 from django.db.models.signals import post_save, pre_delete
 
 # from accounts.services import UserService # NO! circular import!
-from accounts.listeners import profile_changed, user_changed
+from accounts.listeners import profile_changed
+from utils.listeners import invalidate_object_cache
 
 
 class UserProfile(models.Model):
@@ -63,7 +64,8 @@ def get_profile(user):
     If you want to add property to dependent models
     you can use this method
     """
-    from accounts.services import UserService  
+    from accounts.services import UserService
+
     # to avoid circular import
 
     if hasattr(user, '_cached_user_profile'):
@@ -87,9 +89,9 @@ def get_profile(user):
 
 User.profile = property(get_profile)
 
-pre_delete.connect(user_changed, sender=User)
+pre_delete.connect(invalidate_object_cache, sender=User)
 # Will be triggered while deletion
-post_save.connect(user_changed, sender=User)
+post_save.connect(invalidate_object_cache, sender=User)
 # Will be triggered while changes and create
 
 pre_delete.connect(profile_changed, sender=UserProfile)
