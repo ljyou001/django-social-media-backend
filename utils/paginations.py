@@ -1,5 +1,7 @@
-from rest_framework.pagination import PageNumberPagination as DjangoPageNumberPagination
+from dateutil import parser
 from rest_framework.pagination import BasePagination
+from rest_framework.pagination import \
+    PageNumberPagination as DjangoPageNumberPagination
 from rest_framework.response import Response
 
 
@@ -94,8 +96,47 @@ class EndlessPagination(BasePagination):
 
     def to_html(self):
         pass
+    
+    def paginate_ordered_list(self, reverse_order_list, request):
+        """
+        Very brute force way to paginate the ordered list
+        Assume all data are in the cache.
+        We will discuss later if only particial data is in the cache
+        """
+        # Getting newer data
+        if 'created_at__gt' in request.query_params:
+            created_at__gt = parser.isoparse(request.query_params['created_at__gt'])
+            # Why isoparse?
+            # We want to unify the time format, then we can compare the created_at
+            # originally 2023-06-28 08:19:40.123456 to datetime
+            objects = []
+            for obj in reverse_order_list:
+                if obj.created_at > created_at__gt:
+                    objects.append(obj)
+                else:
+                    break
+            self.has_next_page = False
+            return objects
+        
+        index = 0
+        # Getting older data
+        if 'created_at__lt' in request.query_params:
+            created_at__gt = parser.isoparse(request.query_params['created_at__lt'])
+            for index, obj in enumerate(reverse_order_list):
+                if obj.created_at < created_at__gt:
+                    break
+            else:
+                reverse_order_list = []
+            # for-else: else is tracking to break in the for loop
+            # If there is a break hit in the loop, then else block will not executed
+            # Otherwise, else block will be executed
+        self.has_next_page = len(reverse_order_list) > index + self.page_size 
+        return reverse_order_list[index: index + self.page_size]
 
     def paginate_queryset(self, queryset, request, view=None):
+        if type(queryset) == list:
+            return self.paginate_ordered_list(queryset, request)
+        
         if 'created_at__gt' in request.query_params:
             # Upside pagination
             # Directly return all the items greter than the created_at

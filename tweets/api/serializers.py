@@ -6,9 +6,9 @@ from accounts.api.serializers import UserSerializerForTweets
 from comments.api.serializers import CommentSerializer
 from likes.api.serializers import LikeSerializer
 from likes.services import LikeService
-from tweets.api.services import TweetSerivce
 from tweets.constants import TWEET_PHOTOS_UPLOAD_LIMIT
 from tweets.models import Tweet
+from tweets.services import TweetService
 
 
 class TweetSerializer(serializers.ModelSerializer):
@@ -123,7 +123,7 @@ class TweetSerializerForCreate(serializers.ModelSerializer):
         tweet = Tweet.objects.create(user=user, content=content)
         # First: create the tweet
         if validated_data.get('files'):
-            TweetSerivce.create_photos_from_files(
+            TweetService.create_photos_from_files(
                 tweet, 
                 validated_data['files'],
             )
