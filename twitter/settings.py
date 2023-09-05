@@ -177,7 +177,7 @@ STATIC_URL = '/static/'
 
 # So, here we use django-storage to link AWS s3
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-TESTING = ((" ".join(sys.argv)).find('mamage.py test') != -1) 
+TESTING = ((" ".join(sys.argv)).find('manage.py test') != -1) 
 # This will allow django to know it is the test env now.
 # python manage.py test
 if TESTING:
@@ -210,6 +210,15 @@ CACHES = {
         'KEY_PREFIX': 'testing',
     },
 }
+
+
+# FOR Redis
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+REDIS_DB = 0 if TESTING else 1
+# DB names of Redis are integer, there is no character-based names for it
+REDIS_KEY_EXPIRE_TIME = 3600 * 24 * 7
+
 
 # This is how to import local settings in django
 try:

@@ -8,6 +8,8 @@ from comments.models import Comment
 from likes.models import Like
 from newsfeeds.models import NewsFeed
 from tweets.models import Tweet
+from utils.redis_client import RedisClient
+from django.conf import settings
 
 
 class TestCase(DjangoTestCase):
@@ -20,6 +22,7 @@ class TestCase(DjangoTestCase):
         This is because django will not create new and reset the cache after each test.
         This is different from the purely DB related tests.
         """
+        RedisClient.clear()
         caches['testing'].clear()
 
     @property
