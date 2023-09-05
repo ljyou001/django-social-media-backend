@@ -6,6 +6,8 @@ from testing.testcases import TestCase
 from tweets.constants import TWEET_PHOTO_STATUS_CHOICES, TweetPhotoStatus
 from tweets.models import Tweet, TweetPhoto
 from utils.time_helper import utc_now
+from utils.redis_client import RedisClient
+from utils.redis_serializers import DjangoModelSerializer
 
 
 class TweetTests(TestCase):
@@ -48,3 +50,24 @@ class TweetTests(TestCase):
         self.assertEqual(photo.status, TweetPhotoStatus.PENDING)
         self.assertEqual(self.tweet.tweetphoto_set.count(), 1)
         # reverse query: lowercase of the table name plus _set
+
+    def test_cache_tweet_in_redis(self):
+        """
+        This function is testing the basic usage of get a tweet from Redis 
+        """
+        tweet = self.create_tweet(self.user1)
+        conn = RedisClient.get_connection()
+        serialized_data = DjangoModelSerializer.serialize(tweet)
+        conn.set('tweets:{}'.format(tweet.id), serialized_data)
+        # tweets:<id> is defined by our self
+        # In redis, the key "tweets:<id>" is called "name"
+        # This is because redis supports dict as value, it will call the dict's key as key
+
+        data = conn.get('tweets:not_exists')
+        self.assertEqual(data, None)
+
+        data = conn.get('tweets:{}'.format(tweet.id))
+        cached_tweet = DjangoModelSerializer.deserialize(data)
+        self.assertEqual(tweet, cached_tweet)
+        # assertEqual will compare the content of tweet and cached_tweet
+        # tweet and cached_tweet is not sharing the same memory address
