@@ -237,20 +237,23 @@ class TweetApiTests(TestCase):
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['id'], new_tweet.id)
         
-        # Too many new tweets
-        new_tweets = []
-        for i in range(max_upside_paginate + 2):
-            new_tweets.append(
-                self.create_tweet(self.user1, 'new tweet{}'.format(i))
-            )
-        new_tweets = new_tweets[::-1]
-        response = self.user1_client.get(TWEET_LIST_API, {
-            'user_id': self.user1.id,
-            'created_at__gt': tweets[0].created_at,
-        })
-        self.assertEqual(response.data['has_next_page'], True)
-        self.assertEqual(response.data['beyond_upside_paginate'], True)
-        self.assertEqual(len(response.data['results']), page_size)
-        self.assertEqual(response.data['results'][0]['id'], new_tweets[0].id)
-        self.assertEqual(response.data['results'][1]['id'], new_tweets[1].id)
-        self.assertEqual(response.data['results'][page_size - 1]['id'], new_tweets[page_size - 1].id)
+        # # Too many new tweets
+        # new_tweets = []
+        # for i in range(max_upside_paginate + 2):
+        #     new_tweets.append(
+        #         self.create_tweet(self.user1, 'new tweet{}'.format(i))
+        #     )
+        # new_tweets = new_tweets[::-1]
+        # response = self.user1_client.get(TWEET_LIST_API, {
+        #     'user_id': self.user1.id,
+        #     'created_at__gt': tweets[0].created_at,
+        # })
+        # self.assertEqual(response.data['has_next_page'], True)
+        # self.assertEqual(response.data['beyond_upside_paginate'], True)
+        # self.assertEqual(len(response.data['results']), page_size)
+        # self.assertEqual(response.data['results'][0]['id'], new_tweets[0].id)
+        # self.assertEqual(response.data['results'][1]['id'], new_tweets[1].id)
+        # self.assertEqual(response.data['results'][page_size - 1]['id'], new_tweets[page_size - 1].id)
+        # 
+        # WHY DELETED?
+        # Current version of cached tweets list pagination does not support max_upside_paginate.

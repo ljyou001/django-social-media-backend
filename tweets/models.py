@@ -5,6 +5,7 @@ from django.db.models.signals import post_save, pre_delete
 
 from likes.models import Like
 from tweets.constants import TWEET_PHOTO_STATUS_CHOICES, TweetPhotoStatus
+from tweets.listeners import push_tweet_to_cache
 from utils.listeners import invalidate_object_cache
 from utils.memcached_helper import MemcachedHelper
 from utils.time_helper import utc_now
@@ -127,3 +128,4 @@ pre_delete.connect(invalidate_object_cache, sender=Tweet)
 # 2. The sender, here is Tweet, who send the signal
 # 3. The receiver, here is invalidate_object_cache, which is the listener function who handling the signal
 # 4. connect function, connect the signal and listener 
+post_save.connect(push_tweet_to_cache, sender=Tweet)
