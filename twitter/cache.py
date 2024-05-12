@@ -16,7 +16,7 @@ FOLLOWING_PATTERN = 'followings:{user_id}'
 # 2. User and Profile model will not be changed so easily, therefore, it can have a over 98% hit rate
 
 USER_PROFILE_PATTERN = 'user_profile:{user_id}'
-USER_TWEETS_PATTERN = 'user_tweets:{user_id}'
 
 # redis
-# ...
+USER_TWEETS_PATTERN = 'user_tweets:{user_id}'
+USER_NEWSFEEDS_PATTERN = 'newsfeeds:{user_id}'

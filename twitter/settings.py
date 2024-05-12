@@ -14,6 +14,9 @@ from pathlib import Path
 import sys
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -190,8 +193,8 @@ AWS_STORAGE_BUCKET_NAME = 'django-twitter'
 AWS_S3_REGION_NAME = 'ap-tokyo-1'
 # Also, you need to add the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 AWS_S3_ENDPOINT_URL = 'https://nrzfbjgus5of.compat.objectstorage.ap-tokyo-1.oraclecloud.com'
-AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
-AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+AWS_ACCESS_KEY_ID = os.getenv('ORACLE_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('ORACLE_SECRET_ACCESS_KEY')
 
 
 # Use `apt install memcached` and `pip install python-memcached` to fully support memcached
