@@ -9,7 +9,10 @@ class RedisHelper:
         connection = RedisClient.get_connection()
 
         serialized_list = []
-        for obj in objects:
+        # length limit: in case load all data casuing high memory usage
+        # When exceeding the limitation, server will go DB to obtain the data
+        # Considering most people will not check data after the limitation, it is not a problem to load DB.
+        for obj in objects[:settings.REDIS_LIST_LENGTH_LIMIT]:
             serialized_data = DjangoModelSerializer.serialize(obj)
             serialized_list.append(serialized_data)
 
@@ -56,3 +59,10 @@ class RedisHelper:
         # If key(name) does not exist and you implemented the lpush
         # It will insert the key-value into the DB and value type is list
         # If set(name), the value will be a string
+        connection.ltrim(key, 0, settings.REDIS_LIST_LENGTH_LIMIT - 1)
+        # When exceeding the limitation, older data will got deleted
+        # This is to enforce the redis length limitation
+        # 
+        # Why ltrim?
+        # Because of lpush, newer data will be at the left of the list
+        # ltrim is to delete older data which is at the right of the list

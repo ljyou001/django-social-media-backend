@@ -221,6 +221,7 @@ REDIS_PORT = 6379
 REDIS_DB = 0 if TESTING else 1
 # DB names of Redis are integer, there is no character-based names for it
 REDIS_KEY_EXPIRE_TIME = 3600 * 24 * 7
+REDIS_LIST_LENGTH_LIMIT = 100 if not TESTING else 20
 
 
 # This is how to import local settings in django

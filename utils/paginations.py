@@ -1,4 +1,5 @@
 from dateutil import parser
+from django.conf import settings
 from rest_framework.pagination import BasePagination
 from rest_framework.pagination import \
     PageNumberPagination as DjangoPageNumberPagination
@@ -86,7 +87,7 @@ class EndlessPagination(BasePagination):
     # However, here we directly use the created_at for simplification
     """
 
-    page_size = 20
+    page_size = 20 # if not settings.TESTING else 10
     max_upside_paginate = 100 
 
     def __init__(self):
@@ -134,9 +135,6 @@ class EndlessPagination(BasePagination):
         return reverse_order_list[index: index + self.page_size]
 
     def paginate_queryset(self, queryset, request, view=None):
-        if type(queryset) == list:
-            return self.paginate_ordered_list(queryset, request)
-        
         if 'created_at__gt' in request.query_params:
             # Upside pagination
             # Directly return all the items greter than the created_at
@@ -159,6 +157,27 @@ class EndlessPagination(BasePagination):
         # Using the page_size + 1 to know whether there is a next page
         self.has_next_page = len(queryset) > self.page_size
         return queryset[:self.page_size]
+    
+    def paginate_cached_list(self, cached_list, request):
+        """
+        This function is to load the cached_list and check whether it can fit the pagination requirements
+        and determine what to return
+        If yes, return the paginated list, else return None
+        """
+        paginated_list = self.paginate_ordered_list(cached_list, request)
+        # If page up, paginated data are the latest, return it
+        if 'created_at__gt' in request.query_params:
+            return paginated_list
+        # If page down, cached_list are not finished loading, return it
+        if self.has_next_page:
+            return paginated_list
+        # If cached_list length less than the limitation, means the list already contains everything
+        # return it
+        if len(cached_list) < settings.REDIS_LIST_LENGTH_LIMIT:
+            return paginated_list
+        # Entering here, means cached_list is not enough to cover everything, return None
+        # Then the server will retrive data from the DB 
+        return None
     
     def get_paginated_response(self, data):
         return Response({
