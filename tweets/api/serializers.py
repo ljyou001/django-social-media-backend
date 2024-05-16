@@ -9,7 +9,7 @@ from likes.services import LikeService
 from tweets.constants import TWEET_PHOTOS_UPLOAD_LIMIT
 from tweets.models import Tweet
 from tweets.services import TweetService
-
+from utils.redis_helper import RedisHelper
 
 class TweetSerializer(serializers.ModelSerializer):
     user = UserSerializerForTweets(source='cached_user')
@@ -42,16 +42,34 @@ class TweetSerializer(serializers.ModelSerializer):
     def get_has_liked(self, obj):
         return LikeService.has_liked(self.context['request'].user, obj)
 
+    # def get_likes_count(self, obj):
+    #     return obj.like_set.count()
+    # 
+    # def get_comments_count(self, obj):
+    #     return obj.comment_set.count()
+    # 
+    # Denormalization: when obtaining data, the source of this data is unique
+    # 
+    # The problem of current like count & comments count:
+    # Low efficiency, a n+1 (for + SQL query) problem
+    #  -- when getting into the timeline, all tweets(n) have a SELECT ... COUNT query
+    # When want to obtain the number without extra SQL query -- denormalization
+    # which mean save such data into the tweets +-1 directly.
+    # Disadvantage: low consistancy, not always same. 
+    #  - Source of truth: SELECT ... COUNT ... 
+    #  - But in this case, people don't really care about this. Not financial case.
+    # How to keep up the source of truth?
+    #  - Such count can have a timestamp to set a expire, after the expiry, SELECT COUNT the data
+    #  - if random ...: SELECT COUNT and update else: normal. 
+
     def get_likes_count(self, obj):
-        return obj.like_set.count()
+        # SELECT COUNT(*) -> Redis Get
+        # N + 1 Query: If it is DB query, it is unacceptable, however, Redis query is OK
+        return RedisHelper.get_count(obj, 'likes_count')
     
     def get_comments_count(self, obj):
-        return obj.comment_set.count()
-        # What is comment_set?
-        # This is a reverse query mechanism provided by Django
-        # Triggered by: Comment have the foreign key of Tweet 
-        # It will return a queryset of Comment that associated to this particular tweet object
-
+        return RedisHelper.get_count(obj, 'comments_count')
+    
     def get_photo_urls(self, obj):
         photo_urls = []
         for photo in obj.tweetphoto_set.all().order_by('order'):

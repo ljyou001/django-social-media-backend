@@ -2,8 +2,10 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.signals import pre_delete, post_save
 
 from utils.memcached_helper import MemcachedHelper
+from likes.listeners import increase_likes_count, decrease_likes_count
 
 
 class Like(models.Model):
@@ -51,3 +53,6 @@ class Like(models.Model):
     # What method should be in the serializer, and what methods should be in the model?
     # If you want to easily access the data, from model layer, it should be in the model
     # Normally, code is not too long 
+
+post_save.connect(increase_likes_count, sender=Like)
+pre_delete.connect(decrease_likes_count, sender=Like)

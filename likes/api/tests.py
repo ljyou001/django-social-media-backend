@@ -221,3 +221,42 @@ class LikeAPITestCase(TestCase):
         self.assertEqual(len(response.data['likes']), 2)
         self.assertEqual(response.data['likes'][0]['user']['id'], self.user1.id)
         self.assertEqual(response.data['likes'][1]['user']['id'], self.user2.id)
+
+    def test_likes_count_with_cache(self):
+        tweet = self.create_tweet(self.user1)
+        self.create_newsfeed(self.user1, tweet)
+        self.create_newsfeed(self.user2, tweet)
+
+        data = {'content_type': 'tweet', 'object_id': tweet.id}
+        tweet_url = TWEET_DETAIL_URL.format(tweet.id)
+        for i in range(3):
+            _, client = self.create_user_and_client('someone{}'.format(i))
+            client.post(LIKE_BASE_URL, data)
+            response = client.get(tweet_url)
+            self.assertEqual(response.data['likes_count'], i + 1)
+            tweet.refresh_from_db()
+            self.assertEqual(tweet.likes_count, i + 1)
+        
+        self.client2.post(LIKE_BASE_URL, data)
+        response = self.client2.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 4)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 4)
+
+        # Check Newsfeed API
+        newsfeed_url = '/api/newsfeeds/'
+        response = self.client1.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 4)
+        response = self.client2.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 4)
+
+        # If user2 canceled a like
+        self.client2.post(LIKE_BASE_URL + 'cancel/', data)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 3)
+        response = self.client2.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 3)
+        response = self.client1.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 3)
+        response = self.client2.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 3)
