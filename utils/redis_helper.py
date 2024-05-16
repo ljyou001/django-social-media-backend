@@ -66,3 +66,52 @@ class RedisHelper:
         # Why ltrim?
         # Because of lpush, newer data will be at the left of the list
         # ltrim is to delete older data which is at the right of the list
+
+    @classmethod
+    def get_count_key(cls, obj, attr):
+        """
+        This class method is to compose the key for likes_count or comments_count ...
+        Structure is {class/model name}.{attribute(which count)}:{object id}
+        """
+        return '{}.{}:{}'.format(obj.__class__.__name__, attr, obj.id)
+    
+    @classmethod
+    def increase_count(cls, obj, attr):
+        connection = RedisClient.get_connection()
+        key = cls.get_count_key(obj, attr)
+        if connection.exists(key):
+            return connection.incr(key) # An atmoic operation built-in in redis package
+        # If we cannot find the key in the cache, we need to back fill cache from DB
+        # No +1 operation will be implemented in this block
+        # -> Because obj.attr has already +1 in DB, before call incr_count()
+        obj.refresh_from_db() # reload the object from DB
+        connection.set(key, getattr(obj, attr))
+        # getattr: obtain certain attribute, say varible/function/etc., in the object
+        # This is because all these things are a dictonary within the object managed by python
+        # equals: obj.__dict__.get(attr)
+        connection.expire(key, settings.REDIS_KEY_EXPIRE_TIME)
+        return getattr(obj, attr)
+        
+    
+    @classmethod
+    def decrease_count(cls, obj, attr):
+        connection = RedisClient.get_connection()
+        key = cls.get_count_key(obj, attr)
+        if connection.exists(key):
+            return connection.decr(key)
+        obj.refresh_from_db()
+        connection.set(key, getattr(obj, attr))
+        connection.expire(key, settings.REDIS_KEY_EXPIRE_TIME)
+        return getattr(obj, attr)
+        
+    @classmethod
+    def get_count(cls, obj, attr):
+        connection = RedisClient.get_connection()
+        key = cls.get_count_key(obj, attr)
+        count = connection.get(key)
+        if count is not None:
+            return int(count)
+        obj.refresh_from_db()
+        count = getattr(obj, attr)
+        connection.set(key, count)
+        return count

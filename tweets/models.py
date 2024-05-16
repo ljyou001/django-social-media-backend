@@ -23,6 +23,15 @@ class Tweet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True) # auto_now_add only update while creating
     updated_at = models.DateTimeField(auto_now=True) # auto_now: update every time
 
+    likes_count = models.IntegerField(default=0, null=True)
+    comments_count = models.IntegerField(default=0, null=True)
+    # NOTE: these two columns are newly added in this version, always add "null=True"
+    # Otherwise: default = 0 will update all the data in the DB table
+    # causing table LOCKED, the whole table, user unable to use the software.
+    # 
+    # Then how about the likes_count and comments_count for existing tweets?
+    # We need to have an another script to fill the number one by one to avoid table lock.
+
     class Meta:
         index_together = (('user', 'created_at'),)
         # This way to create a compound index
