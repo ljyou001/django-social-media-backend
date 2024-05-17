@@ -92,3 +92,8 @@ class FriendshipService(object):
         """
         key = FOLLOWING_PATTERN.format(user_id=from_user_id)
         cache.delete(key)
+
+    @classmethod
+    def get_following_user_ids(cls, to_user_id):
+        friendships = Friendship.objects.filter(to_user_id=to_user_id)
+        return [friendship.from_user_id for friendship in friendships]

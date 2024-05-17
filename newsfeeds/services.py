@@ -1,5 +1,5 @@
 from friendships.services import FriendshipService
-from newsfeeds.tasks import fanout_newsfeeds_task
+from newsfeeds.tasks import fanout_newsfeeds_main_task
 from newsfeeds.models import NewsFeed
 from utils.redis_helper import RedisHelper
 from twitter.cache import USER_NEWSFEEDS_PATTERN
@@ -17,7 +17,7 @@ class NewsFeedService(object):
         Task processing worker will execute codes asynchronously in fanout_newsfeeds_task
         If this task need 10s to finish, then the 10s will be spent by worker in backend rather than user 
         """
-        fanout_newsfeeds_task.delay(tweet.id)
+        fanout_newsfeeds_main_task.delay(tweet.id, tweet.user_id) # <- adding tweet.user_id to -1 DB call
         # The line only put the task into the message queue rather than execute the function to make the user wait
         # 
         # NOTE: parameter in .delay() should be values that can be serialized by celery

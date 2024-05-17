@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
+from kombu import Queue
 from pathlib import Path
 import sys
 import os
@@ -230,9 +231,45 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_ALWAYS_EAGER = TESTING
 # CELERY_TASK_ALWAYS_EAGER is very important.
 # = TESTING means it will run task in sync during unit test
+CELERY_QUEUE = (
+    Queue('default', routing_key='default'),
+    Queue('newsfeeds', routing_key='newsfeeds'),
+) 
+# CELERY_QUEUE and routing_key: put tasks into different queues based to distinguish its priority.
+# Same frequency to launch async tasks in each queue: 
+# default -> newsfeeds -> default -> newsfeeds -> ...
+# In async task functions, use routing_key in shared_task to assign queue.
 # 
+# Why? 1 million follower problem:
+# - Supposed we have 100 workers and batch size is 100
+# - equals a worker have 100 tasks pending to process, suppose it takes 10 minutes
+# Such heavy workload will take up plenty of resources and some urgent tasks could comes...
+# - at this time, a user want to sign up your site and wait for SMS verification
+# - it could take 10 minutes+ wait for them since there is no worker left.
+
+## Further more, I would like to assign some workers to higher priority tasks and some execute lowers:
+# import os
+# from dotenv import load_dotenv
+# load_dotenv()
+# if os.getenv('WORKER_TYPE') == 'newsfeeds':
+#     CELERY_QUEUE = (
+#         Queue('newsfeeds', routing_key='newsfeeds'),
+#     ) 
+# else:
+#     CELERY_QUEUE = (
+#         Queue('default', routing_key='default'),
+#     ) 
+
+# DUPLICATED: for learning
+if os.getenv('WORKER_TYPE') == 'everything':
+    CELERY_QUEUE = (
+        Queue('default', routing_key='default'),
+        Queue('newsfeeds', routing_key='newsfeeds'),
+    ) 
+
 # Celery can be directly executed using command line for workers:
 #   celery -A twitter worker -l info
+
 
 # This is how to import local settings in django
 try:
