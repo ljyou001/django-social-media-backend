@@ -223,6 +223,16 @@ REDIS_DB = 0 if TESTING else 1
 REDIS_KEY_EXPIRE_TIME = 3600 * 24 * 7
 REDIS_LIST_LENGTH_LIMIT = 100 if not TESTING else 20
 
+# Celery
+CELERY_BROKER_URL = 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, "2") \
+                    if not TESTING else 'redis://{}:{}/{}'.format(REDIS_HOST, REDIS_PORT, "0")
+CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_ALWAYS_EAGER = TESTING
+# CELERY_TASK_ALWAYS_EAGER is very important.
+# = TESTING means it will run task in sync during unit test
+# 
+# Celery can be directly executed using command line for workers:
+#   celery -A twitter worker -l info
 
 # This is how to import local settings in django
 try:
