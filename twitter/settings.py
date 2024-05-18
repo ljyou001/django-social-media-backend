@@ -74,6 +74,8 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+
+    'EXCEPTION_HANDLER': 'utils.ratelimit.exception_handler',
 }
 
 MIDDLEWARE = [
@@ -213,6 +215,12 @@ CACHES = {
         'TIMEOUT': 86400,
         'KEY_PREFIX': 'testing',
     },
+    'ratelimit': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': 86400 * 7,
+        'KEY_PREFIX': 'rl',
+    }
 }
 
 
@@ -269,6 +277,16 @@ if os.getenv('WORKER_TYPE') == 'everything':
 
 # Celery can be directly executed using command line for workers:
 #   celery -A twitter worker -l info
+
+
+# Rate Limit
+RATELIMIT_USER_CACHE = 'ratelimit'
+RATELIMIT_CACHE_PREFIX = 'rl:' # You can also delete this line and use the prefix above
+RATELIMIT_ENABLE = not TESTING
+
+# # You can also...
+# if os.getenv('ENVIRONMENT') == 'DEV':
+#     RATELIMIT_ENABLE = False
 
 
 # This is how to import local settings in django

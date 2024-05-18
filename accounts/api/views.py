@@ -1,11 +1,3 @@
-from django.contrib.auth import authenticate as django_authenticate
-from django.contrib.auth import login as django_login
-from django.contrib.auth import logout as django_logout
-from django.contrib.auth.models import User
-from rest_framework import permissions, viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
-
 from accounts.api.serializers import (
     LoginSerializer, 
     SignupSerializer,
@@ -14,6 +6,15 @@ from accounts.api.serializers import (
     UserSerializerWithProfile,
 )
 from accounts.models import UserProfile
+from django.contrib.auth import authenticate as django_authenticate
+from django.contrib.auth import login as django_login
+from django.contrib.auth import logout as django_logout
+from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
+from ratelimit.decorators import ratelimit
+from rest_framework import permissions, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from utils.permissions import IsObjectOwner
 
 
@@ -41,6 +42,7 @@ class AccountViewSet(viewsets.ViewSet):
     @action(methods=['get'], detail=False)
     # 自定义了一个动作来操作
     # detail=False：意味着这是定义在整体资源上的一个动作，不需要写objectID
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='GET', block=True))
     def login_status(self, request):
         data = {
             'has_logged_in': request.user.is_authenticated,
@@ -53,11 +55,13 @@ class AccountViewSet(viewsets.ViewSet):
         return Response(data)
     
     @action(methods=['post'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='POST', block=True))
     def logout(self, request):
         django_logout(request)
         return Response({'success': True})
     
     @action(methods=['post'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='POST', block=True))
     def login(self, request):
         # get username and passwrod from request
         # normally from request.data['username'], but this one could be void
@@ -97,6 +101,7 @@ class AccountViewSet(viewsets.ViewSet):
         }, status=200)
     
     @action(methods=['post'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='POST', block=True))
     def signup(self, request):
         serializer = SignupSerializer(data=request.data)
         # If SignupSerializer(instance=user, data=request.data), it is updating data rather than create a new one

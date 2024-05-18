@@ -1,9 +1,5 @@
 from django.contrib.auth.models import User
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-
+from django.utils.decorators import method_decorator
 from inbox.services import NotificationService
 from likes.api.serializers import (
     LikeSerializer, 
@@ -11,6 +7,11 @@ from likes.api.serializers import (
     LikeSerializerForCreate,
 )
 from likes.models import Like
+from ratelimit.decorators import ratelimit
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from utils.decorators import required_params
 
 
@@ -23,6 +24,7 @@ class LikeViewSet(viewsets.GenericViewSet):
     serializer_class = LikeSerializerForCreate
 
     @required_params(method='post', params=['content_type', 'object_id'])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def create(self, request, *args, **kwargs):
         """
         Create a new like
@@ -52,6 +54,7 @@ class LikeViewSet(viewsets.GenericViewSet):
     
     @action(methods=['post'], detail=False)
     @required_params(method='post', params=['content_type', 'object_id'])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def cancel(self, request, *arg, **kwarg):
         """
         Cancel a like based on content_type and object_id
