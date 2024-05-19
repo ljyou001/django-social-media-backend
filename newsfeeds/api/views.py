@@ -1,11 +1,12 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-
+from django.utils.decorators import method_decorator
 from newsfeeds.api.serializers import NewsFeedSerializer
 from newsfeeds.models import NewsFeed
-from utils.paginations import EndlessPagination
 from newsfeeds.services import NewsFeedService
-from newsfeeds.models import NewsFeed
+from ratelimit.decorators import ratelimit
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from utils.paginations import EndlessPagination
+
 
 class NewsFeedViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
@@ -14,6 +15,7 @@ class NewsFeedViewSet(viewsets.GenericViewSet):
     def get_queryset(self):
         return NewsFeed.objects.filter(user=self.request.user)
 
+    @method_decorator(ratelimit(key='user', rate='5/s', method='GET', block=True))
     def list(self, request):
         cached_newsfeeds = NewsFeedService.get_cached_newsfeeds(request.user.id)
         # cached_newsfeeds only covers the first 200 pieces of data

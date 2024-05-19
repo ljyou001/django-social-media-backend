@@ -1,8 +1,9 @@
+from django.utils.decorators import method_decorator
+from newsfeeds.services import NewsFeedService
+from ratelimit.decorators import ratelimit
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
-from newsfeeds.services import NewsFeedService
 from tweets.api.serializers import (
     TweetSerializer, 
     TweetSerializerForCreate,
@@ -27,6 +28,7 @@ class TweetViewSet(viewsets.GenericViewSet):
             return [AllowAny()]
         return [IsAuthenticated()]
     
+    @method_decorator(ratelimit(key='user_or_ip', rate='5/s', method='GET', block=True))
     def retrieve(self, request, *args, **kwargs):
         """
         Retrieve a tweet with comments
@@ -66,6 +68,9 @@ class TweetViewSet(viewsets.GenericViewSet):
 
         return self.get_paginated_response(serializer.data) 
     
+    # In this case, 2 rate limiter will work together
+    @method_decorator(ratelimit(key='user', rate='1/s', method='POST', block=True))
+    @method_decorator(ratelimit(key='user', rate='5/m', method='POST', block=True))
     def create(self, request):
         serializer = TweetSerializerForCreate(
             data=request.data,

@@ -1,15 +1,16 @@
 from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
 from django_filters.rest_framework import DjangoFilterBackend
-from notifications.models import Notification
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
 from inbox.api.serializers import (
     NotificationSerializer,
     NotificationSerializerForUpdate,
 )
+from notifications.models import Notification
+from ratelimit.decorators import ratelimit
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from utils.decorators import required_params
 
 
@@ -43,6 +44,7 @@ class NotificationViewSet(
     # This is to redefine the url path of the action
     # Why? Cuz we don't usually use _ in URL, but - is quite common
     @action(methods=['get'], detail=False, url_path='unread-count')
+    @method_decorator(ratelimit(key='user', rate='3/s', method='GET', block=True))
     def unread_count(self, request):
         """
         Get unread count
@@ -58,6 +60,7 @@ class NotificationViewSet(
         return Response({'unread_count': count}, status=status.HTTP_200_OK)
     
     @action(methods=['post'], detail=False, url_path='mark-all-as-read')
+    @method_decorator(ratelimit(key='user', rate='3/s', method='POST', block=True))
     def mark_all_as_read(self, request):
         """
         Mark all as read
@@ -79,6 +82,7 @@ class NotificationViewSet(
         return Response({'marked_count': updated_count}, status=status.HTTP_200_OK)
     
     @required_params(method='put', params=['unread'])
+    @method_decorator(ratelimit(key='user', rate='3/s', method='POST', block=True))
     def update(self, request, *args, **kwargs):
         """
         Mark a notification as read or unread

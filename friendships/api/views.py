@@ -1,14 +1,17 @@
 from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
+from friendships.api.serializers import (
+    FollowerSerializer,
+    FollowingSerializer,
+    FriendshipSerializerForCreate,
+)
+from friendships.models import Friendship
+from friendships.services import FriendshipService
+from ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
-from friendships.api.serializers import (FollowerSerializer,
-                                         FollowingSerializer,
-                                         FriendshipSerializerForCreate)
-from friendships.models import Friendship
-from friendships.services import FriendshipService
 from utils.paginations import PageNumberPagination
 
 
@@ -18,6 +21,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
     pagination_class = PageNumberPagination
 
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
     def followers(self, request, pk):
         """
         Get a list of followers based on to_user_id
@@ -35,6 +39,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         # Return the rendered data
     
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
     def followings(self, request, pk):
         """
         Get a list of followings user based on from_user_id
@@ -47,6 +52,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         return self.get_paginated_response(serializer.data)
     
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def follow(self, request, pk):
         """
         Create follow relationship between logged-in user (from_user_id) and some to_user_id
@@ -83,6 +89,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         )
 
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def unfollow(self, request, pk):
         self.get_object()
         # if user(id=pk) not exist, 404 error will raise
