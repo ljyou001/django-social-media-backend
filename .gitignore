@@ -137,3 +137,8 @@ dmypy.json
 # Test images
 my-avatar*
 selfie*
+
+# dependencies
+jdk*
+hbase-2.6.0*
+thrift*
