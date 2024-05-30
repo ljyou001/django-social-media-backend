@@ -101,7 +101,7 @@ In MySQL, indexed columns are sorted in B+ Tree, therefore, it supports range qu
     or in Java
 
     ```java
-    value = TreeMap<String, HashMap<String, String>>
+    HBase = TreeMap<String, HashMap<String, String>>
     //      row_key(sorted)   column_key(unsorted)
     ```
 
@@ -125,6 +125,11 @@ NOTE:
 1. Row keys are selected based on the what columns you want to make range query
 2. Row keys must be in same length if you want to have a valid range query, you need to fill-up user_id before it add one more digit
 3. Structural or fill-up modification in row keys will cause a whole table migration, you cannot update on the existing table
+4. Row key is the primary key equivalence in HBase, it could be non-unique. 
+    - That's why we need a precise timestamp here in the project
+    - Another solution in real world is to use [snowflake algorithm](https://github.com/search?q=snowflake&type=repositories)
+        - Why still use UUID more widely rather than snowflake in real world: Safety concern: UUID does not contain timestamp, worker number or serial number
+        
 
 In MySQL
 
@@ -133,7 +138,95 @@ In MySQL
 | 100    | 123     | hello   | 5           | 1              |
 | 200    | 321     | world   | 2           | 0              |
 
+### Designing techniques for HBase
 
+#### Reversing
+
+This is a important design to avoid hotspotting problem
+
+for example:
+row_key for Following/Follower (user_id, timestamp)
+since user_id is a increasing integer, newer use will have a larger number
+In most cases, newer ones are more active say following, tweeting...
+Since most of the newest data are in the newest HBase instance.
+Then most of the request will goes to the newest HBase instance.
+
+In a distributed database, a **hotspot** is an overworked node – in other words, a part of the database that’s processing or storing a greater share of the total workload than it is meant to handle.
+
+Since we will not send range queries to user_id but only use == for it
+So we can turn user_id from 123 to 321
+
+Reverse user_id digit by digit will largely boost its performance
+
+**What to reverse**
+
+The value in raw key that:
+
+1. Timely related
+    - newer user have a larger user_id
+2. No need to support range query
+    - all qeueries related to user_id are `==`
+
+DO NOT use reverse on row keys you need to make range query
+
+#### Fill-up 0s
+
+Row key's type is string. If you want to have valid sorting, then all the strings must be at the same length. 
+Thus, we need to add enough 0s to the row key.
+
+For example, `"23"` is larger than `"123"` while sorting, but `"023"` < `"123"`
+
+#### Salting
+
+Salting means to add fixed length and random characters/digits as row key's prefix.
+
+It can preserve the order and solve the hotspot problem.
+
+But, it will cause a longer query time while making range query.
+
+```python
+For example
+To find range_query(123*), you need to find
+ - range_query(a123*)
+ - range_query(b123*)
+ - ...
+ - range_query(z123*)
+```
+
+In some cases, we will take some part of the row key to hash, and make the hashed value as prefix. 
+
+`new_row_key = hash(old_row_key) + old_row_key`
+
+But still, it is more difficult to find the prefix using this salting method.
+
+#### Summary and Compare to Cassandra
+
+It is very important to design a good row key based on the usage in HBase.
+
+Compare to Cassandra
+
+HBase is using `TreeMap<String, HashMap<String, String>>`
+
+Cassandra is `HashMap<String, TreeMap<String, String>>`
+
+This means Cassandra requires you split part of row key in HBase into `==` query, to determine which DB node to store the data.
+
+Second `String` in `HashMap<String, TreeMap<String, String>>` of Cassandra usually still a seralized dict. Therefore, in the real world usage, Cassandra is like `HashMap<String, TreeMap<String, HashMap<String, String>>>`
+
+example:
+
+```shell
+HBase: Tweet
+    row key: (user_id, timestamp)
+    row data: {        # unsorted / hash table
+        column key: ...
+        column value: ...
+    }
+Cassandra: Tweet
+    row key (hash key): user_id # <- must be == query
+    column key: timestamp  # <- range query
+    value: dict(row_data) # <- row data in HBase
+```
 
 ## Deploy HBase
 
