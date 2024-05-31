@@ -1,4 +1,5 @@
 from comments.models import Comment
+from django_hbase.models import HBaseModel
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -11,8 +12,39 @@ from rest_framework.test import APIClient
 from tweets.models import Tweet
 from utils.redis_client import RedisClient
 
-
 class TestCase(DjangoTestCase):
+    # HBase related functions
+    hbase_tables_created = False
+
+    def setUp(self):
+        self.clear_cache()
+        try:
+            self.hbase_tables_created = True
+            for hbase_model_class in HBaseModel.__subclasses__():
+            # This is to obtain all the subclasses created with HBaseModel
+                hbase_model_class.create_table()
+        except Exception:
+            self.tearDown()
+            raise
+        # raise: raise the exception, stop the test, then developer will see the error
+        # If no raise, then there will be no exception thrown
+        # `raise` equals `raise Exception` here, if no defined exception
+
+        # remember to change the setUp functions in testcases
+        # to execute this setUp functions of the subclasses
+        # Otherwise, this setUp functions will not be executed in testcases
+
+    def tearDown(self):
+        if not self.hbase_tables_created:
+            return
+        for hbase_model_class in HBaseModel.__subclasses__():
+            hbase_model_class.drop_table()
+
+    # By checking the source code of django.test.TestCase we can see
+    # Before the test starts, it will call the function setUp()
+    # After the test ends, it will call the function tearDown()
+    # Since TestCase did not implement both functions for HBase
+    # We need to implement them manually
 
     def clear_cache(self):
         """

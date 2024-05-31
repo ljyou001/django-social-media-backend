@@ -289,6 +289,9 @@ RATELIMIT_ENABLE = not TESTING
 #     RATELIMIT_ENABLE = False
 
 
+# HBase
+HBASE_HOST = '127.0.0.1'
+
 # This is how to import local settings in django
 try:
     from .local_settings import *
