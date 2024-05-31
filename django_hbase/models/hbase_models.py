@@ -77,7 +77,7 @@ class HBaseModel:
         return value
 
     @classmethod
-    def serialize_row_key(cls, data):
+    def serialize_row_key(cls, data, is_prefix=False):
         """
         serialize dict of values to bytes (not str) in order to generate row keys
         {key1: val1} => b"val1"
@@ -102,6 +102,9 @@ class HBaseModel:
             'created_at': 1716511825, field_type = 'timestamp'
             'to_user_id': 002, field_type = 'int', column_family='cf'
         }
+
+        Adding is_prefix for filter function:
+        Since the key could be incompleted
         """
         field_hash = cls.get_field_hash()
         values = []
@@ -109,8 +112,11 @@ class HBaseModel:
             if field.column_family:
                 continue
             value = data.get(key)
-            if value is None:
-                raise BadRowKeyError('Missing row key: {}'.format(key))
+            if value is None: 
+                if not is_prefix:
+                    raise BadRowKeyError('Missing row key: {}'.format(key))
+                break
+                # Otherwise, next line could not get data based on the field & value 
             # if there is no problem in row key
             value = cls.serialized_field(field, value)
             if ':' in value:
@@ -209,8 +215,8 @@ class HBaseModel:
     def get(cls, **kwargs):
         row_key = cls.serialize_row_key(kwargs)
         table = cls.get_table()
-        row = table.row(row_key)
-        return cls.init_from_row(row_key, row)
+        row_data = table.row(row_key)
+        return cls.init_from_row(row_key, row_data)
     
     # START: This part is for unit testing
 
@@ -251,3 +257,42 @@ class HBaseModel:
             cls.get_table_name(),
             column_families
         )
+
+
+    # START: This part is for filtering in HBase
+
+    @classmethod
+    def serialize_row_key_from_tuple(cls, row_key_tuple):
+        if row_key_tuple is None:
+            return None
+        data = {
+            key: value
+            for key, value in zip(cls.Meta.row_key, row_key_tuple)
+        }
+        return cls.serialize_row_key(data, is_prefix=True)
+
+    @classmethod
+    def filter(cls, start=None, stop=None, prefix=None, limit=None, reverse=False):
+        """
+        Using the happybase scan function to filter values
+
+        start, stop, prefix are all accept tuples
+        (row key 1, row key 2, ...)
+        """
+        # Serialize tuple to string
+        row_start = cls.serialize_row_key_from_tuple(start)
+        row_stop = cls.serialize_row_key_from_tuple(stop)
+        row_prefix = cls.serialize_row_key_from_tuple(prefix)
+
+        # Scan the table
+        table = cls.get_table()
+        rows = table.scan(row_start, row_stop, row_prefix, limit=limit, reverse=reverse)
+        # https://happybase.readthedocs.io/en/latest/api.html search scan
+        # Also go advanced_tools/hbase/02-before-filter.md for examples
+
+        # Deserialize to instance list
+        results = []
+        for row_key, row_data in rows:
+            instance = cls.init_from_row(row_key, row_data)
+            results.append(instance)
+        return results
