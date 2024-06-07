@@ -11,7 +11,7 @@ class FriendshipServiceTests(TestCase):
     def setUp(self):
         # super(FriendshipServiceTests, self).setUp()
         # # To ensure the setUp function in TestCase can be executed
-        self.clear_cache()
+        super(FriendshipServiceTests, self).setUp()
         self.user1 = self.create_user('user1')
         self.user2 = self.create_user('user2')
 

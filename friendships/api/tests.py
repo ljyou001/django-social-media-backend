@@ -80,19 +80,21 @@ class FriendshipApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
         # A normal case: user2 unfollow user1, create this piece of data before you do it
-        Friendship.objects.create(from_user=self.user2, to_user=self.user1)
-        count = Friendship.objects.count()
+        self.create_friendship(from_user=self.user2, to_user=self.user1)
+        before_count = FriendshipService.get_following_count(self.user2.id)
         response = self.user2_client.post(url)
+        after_count = FriendshipService.get_following_count(self.user2.id)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['deleted'], 1)
-        self.assertEqual(Friendship.objects.count(), count - 1)
+        self.assertEqual(after_count, before_count - 1)
 
         # Repetance case: silent dealing
-        count = Friendship.objects.count() 
+        before_count = FriendshipService.get_following_count(self.user2.id)
         response = self.user2_client.post(url)
+        after_count = FriendshipService.get_following_count(self.user2.id)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['deleted'], 0)
-        self.assertEqual(Friendship.objects.count(), count)
+        self.assertEqual(after_count, before_count)
 
     def test_followings(self):
         url = FOLLOWINGS_URL.format(self.user2.id)

@@ -59,8 +59,11 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         pk should be to_user_id
         POST /api/friendships/pk/follow
         """
-        # silent error handling: if doesn't matter if this is a duplicate
-        if FriendshipService.has_followed(request.user.id, int(pk)):
+        to_follow_user = self.get_object()
+        # get_object can help us to check whether the pk is exist
+        # get_object will load the queryset in this viewset
+        # Then its get_object_or_404 will examine whether the user exists
+        if FriendshipService.has_followed(request.user.id, to_follow_user.id):
             return Response({
                 'success': True,
                 'duplicate': True,
@@ -68,7 +71,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
 
         serializer = FriendshipSerializerForCreate(data={
             'from_user_id': request.user.id,
-            'to_user_id': pk,
+            'to_user_id': to_follow_user.id,
         })
         if not serializer.is_valid():
             return Response({
@@ -91,42 +94,17 @@ class FriendshipViewSet(viewsets.GenericViewSet):
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
     @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def unfollow(self, request, pk):
-        self.get_object()
-        # if user(id=pk) not exist, 404 error will raise
-        if request.user.id == int(pk):
+        unfollow_user = self.get_object()
+        if request.user.id == unfollow_user.id:
             return Response({
                 'success': False,
                 'error': 'you cannot unfollow yourself',
             }, status=status.HTTP_400_BAD_REQUEST)
-        deleted, _ = Friendship.objects.filter(
-            from_user = request.user,
-            to_user=pk,
-        ).delete()
-        # .delete() will return (
-        # how many elements you deleted,
-        # how many elements per models you deleted 
-        # )
-        # This is because you might used on cascade delete
-        # In prod, we normally use set null in case of domino effect.
-
-        # Here we can know some don't while using SQL DB:
-        # 1. Don't use JOIN: O(n^2) the whole step, mem is also big
-        # 2. Don't use CASCADE
-        # 3. Drop Foreign key constraint, use int/str id directly instead
-        
-        # FriendshipService.invalidate_following_cache(request.user.id)
+        deleted = FriendshipService.unfollow(request.user.id, unfollow_user.id)
         return Response({
             'success': True,
             'deleted': deleted,
         }, status=status.HTTP_200_OK)
-
-
-    # def list(self, request):
-    #     """
-    #     Only to enable the api access at GET /, which mean it will show this:
-    #     "api/friendships": "<host>/api/friendships/"
-    #     """
-    #     return(Response({'message': 'This is friendship API'}))
 
     def list(self,request):
         """

@@ -121,6 +121,28 @@ class FriendshipService(object):
         )
     
     @classmethod
+    def unfollow(cls, from_user_id, to_user_id):
+        if from_user_id == to_user_id:
+            return 0
+        
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            # deleted: how many data got deleted
+            # _: detailed number and type got deleted, ignored here
+            deleted, _ = Friendship.objects.filter(
+                from_user_id=from_user_id,
+                to_user_id=to_user_id,
+            ).delete()
+            return deleted
+
+        instance = cls.get_follow_instance(from_user_id, to_user_id)
+        if instance is None:
+            return 0
+        # Obtaining the instance is mainly for the create_at
+        HBaseFollowing.delete(from_user_id=from_user_id, created_at=instance.created_at)
+        HBaseFollower.delete(to_user_id=to_user_id, created_at=instance.created_at)
+        return 1
+    
+    @classmethod
     def get_follow_instance(cls, from_user_id, to_user_id):
         followings = HBaseFollowing.filter(prefix=(from_user_id, None))
         for follow in followings:
@@ -151,3 +173,5 @@ class FriendshipService(object):
             return Friendship.objects.filter(from_user_id=from_user_id).count()
         followings = HBaseFollowing.filter(prefix=(from_user_id, None))
         return len(followings)
+    
+    

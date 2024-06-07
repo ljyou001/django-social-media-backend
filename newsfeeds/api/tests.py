@@ -13,7 +13,7 @@ FOLLOW_URL = '/api/friendships/{}/follow/'
 class NewsFeedTestCase(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(NewsFeedTestCase, self).setUp()
         # Always clear_cache before any test
         # Otherwise, it will be extremely difficult to debug if this fails
 
