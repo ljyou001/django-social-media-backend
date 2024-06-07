@@ -1,16 +1,19 @@
 from comments.models import Comment
-from django_hbase.models import HBaseModel
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import caches
 from django.test import TestCase as DjangoTestCase
+from django_hbase.models import HBaseModel
 from friendships.models import Friendship
+from friendships.services import FriendshipService
+from gatekeeper.models import GateKeeper
 from likes.models import Like
 from newsfeeds.models import NewsFeed
 from rest_framework.test import APIClient
 from tweets.models import Tweet
 from utils.redis_client import RedisClient
+
 
 class TestCase(DjangoTestCase):
     # HBase related functions
@@ -56,6 +59,11 @@ class TestCase(DjangoTestCase):
         """
         RedisClient.clear()
         caches['testing'].clear()
+        GateKeeper.set_kv('switch_friendship_to_hbase', 'percent', 100)
+        # This one is to turn on/off the new feature during the test
+        # If you directly turn this one thrift will report a org.apache.hadoop.hbase.TableNotFoundException
+        # It means you did not create the HBase table
+        # In friendships.api.tests' case, this is because setUp was overriden 
 
     @property
     def anonymous_client(self):
@@ -129,4 +137,4 @@ class TestCase(DjangoTestCase):
         return NewsFeed.objects.create(user=user, tweet=tweet)
 
     def create_friendship(self, from_user, to_user):
-        return Friendship.objects.create(from_user=from_user, to_user=to_user)
+        return FriendshipService.follow(from_user.id, to_user.id)

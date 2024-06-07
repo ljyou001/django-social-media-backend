@@ -1,67 +1,72 @@
+from accounts.api.serializers import UserSerializerForFriendship
+from accounts.services import UserService
 from django.contrib.auth.models import User
+from friendships.models import Friendship
+from friendships.services import FriendshipService
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from accounts.api.serializers import UserSerializerForFriendship
-from friendships.models import Friendship
-from friendships.services import FriendshipService
 
+class BaseFriendshipSerializer(serializers.Serializer): # Serializer is the most basic serializer in django-rest
+    user = serializers.SerializerMethodField()
+    # both can be to_user and from_user
+    created_at = serializers.SerializerMethodField()
+    has_followed = serializers.SerializerMethodField()
+    # Above 3 are required attributes for Friendship
 
-class FollowingUserIdSetMixin:
-    """
-    This Mixin to get the following user id set
+    def update(self, instance, validated_data):
+        pass
 
-    Mixin means a plugin
-    """
-    @property
-    def following_user_id_set(self: serializers.ModelSerializer):
+    def create(self, validated_data):
+        pass
+    # Above 2 function are required to have if super is serializers.Serializer
+    # We will pass for both functions
+    # This is to avoid potential data leak
+    # Since we should not process data in this redenering class 
+
+    def get_user_id(self, obj):
+        raise NotImplementedError
+
+    def _get_following_user_id_set(self):
         if self.context['request'].user.is_anonymous:
             return {}
         if hasattr(self, '_cached_following_user_id_set'):
-            # attr is a kind of cache in object level, in memory, but not memcached powered
-            # it is because python can add or set attrbutes of class at anywhere and anytime
             return self._cached_following_user_id_set 
         user_id_set = FriendshipService.get_following_user_id_set(
-            self.context['request'].user.id
+            self.context['request'].user.id,
         )
         setattr(self, '_cached_following_user_id_set', user_id_set)
         return user_id_set
-
-
-class FollowerSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
-    user = UserSerializerForFriendship(source='cached_from_user')
-    # source='' can directly access model field and property function
-    has_followed = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Friendship
-        fields = ('user', 'created_at', 'has_followed')
-
+    
     def get_has_followed(self, obj):
-        # As we said before, here is the implementation of cached version
-        # following_user_id_set is extended from FollowingUserIdSetMixin
-        return obj.from_user_id in self.following_user_id_set
+        return self.get_user_id(obj) in self._get_following_user_id_set()
+    
+    def get_user(self, obj):
+        user = UserService.get_user_by_id(self.get_user_id(obj))
+        return UserSerializerForFriendship(user).data
+        # we need .data to transfer this to a dict
+    
+    def get_created_at(self, obj):
+        return obj.created_at
 
 
-class FollowingSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
-    user = UserSerializerForFriendship(source='cached_to_user')
-    has_followed = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Friendship
-        fields = ('user', 'created_at', 'has_followed')
-
-    def get_has_followed(self, obj):
-        return obj.to_user_id in self.following_user_id_set
+class FollowerSerializer(BaseFriendshipSerializer):
+    def get_user_id(self, obj):
+        return obj.from_user_id
 
 
-class FriendshipSerializerForCreate(serializers.ModelSerializer):
+class FollowingSerializer(BaseFriendshipSerializer):
+    def get_user_id(self, obj):
+        return obj.to_user_id
+
+
+class FriendshipSerializerForCreate(serializers.Serializer):
+    # Originally, ModelSerializer also check the uniqueness and etc.
     from_user_id = serializers.IntegerField()
     to_user_id = serializers.IntegerField()
     
-    class Meta:
-        model = Friendship
-        fields = ('from_user_id', 'to_user_id')
+    # No longer: class Meta
+    # This is not a Django ORM
 
     def validate(self, data):
         if data['from_user_id'] == data['to_user_id']:
@@ -71,14 +76,10 @@ class FriendshipSerializerForCreate(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        return Friendship.objects.create(
-            from_user_id = validated_data['from_user_id'],
-            to_user_id = validated_data['to_user_id'],
+        return FriendshipService.follow(
+            from_user_id=validated_data['from_user_id'],
+            to_user_id=validated_data['to_user_id'],
         )
     
-        # Can you see the mistake of the following code?
-        # 
-        # return Friendship.objects.create({
-        #     'from_user_id': validated_data['from_user_id'],
-        #     'to_user_id': validated_data['to_user_id'],
-        # })
+    def update(self, instance, validated_data):
+        pass

@@ -59,12 +59,12 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         pk should be to_user_id
         POST /api/friendships/pk/follow
         """
-        if Friendship.objects.filter(from_user_id=request.user, to_user_id=pk).exists():
+        # silent error handling: if doesn't matter if this is a duplicate
+        if FriendshipService.has_followed(request.user.id, int(pk)):
             return Response({
                 'success': True,
                 'duplicate': True,
             }, status=status.HTTP_201_CREATED)
-        # silent error handling: if doesn't matter if this is a duplicate
 
         serializer = FriendshipSerializerForCreate(data={
             'from_user_id': request.user.id,

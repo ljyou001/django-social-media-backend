@@ -9,10 +9,8 @@ class RedisHelper:
         connection = RedisClient.get_connection()
 
         serialized_list = []
-        # length limit: in case load all data casuing high memory usage
-        # When exceeding the limitation, server will go DB to obtain the data
-        # Considering most people will not check data after the limitation, it is not a problem to load DB.
-        for obj in objects[:settings.REDIS_LIST_LENGTH_LIMIT]:
+        for obj in objects: 
+            # Bug Fix: Removed the length limit here, this one did not actually limited the length
             serialized_data = DjangoModelSerializer.serialize(obj)
             serialized_list.append(serialized_data)
 
@@ -26,8 +24,9 @@ class RedisHelper:
 
     @classmethod
     def load_objects(cls, key, queryset):
+        queryset = queryset[:settings.REDIS_LIST_LENGTH_LIMIT]
+        # Bug Fix: moved the length limit here and below function
         connection = RedisClient.get_connection()
-
         # cache hit: check if key exists
         # If yes, load from cache directly
         if connection.exists(key):
@@ -47,6 +46,7 @@ class RedisHelper:
     
     @classmethod
     def push_object(cls, key, obj, queryset):
+        queryset = queryset[:settings.REDIS_LIST_LENGTH_LIMIT]
         connection = RedisClient.get_connection()
         if not connection.exists(key):
             # Load from database
