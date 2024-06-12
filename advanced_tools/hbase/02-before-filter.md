@@ -14,8 +14,8 @@ Comment these two lines in `HBaseModel.create_table` function
 Add a create_table function first, then create the tables for the Friendships models
 
 ```python
-from friendships.hbase_models import HBaseFollowing
-from friendships.hbase_models import HBaseFollower
+from friendships.models import HBaseFollowing
+from friendships.models import HBaseFollower
 # import models 
 HBaseFollowing.create_table()
 HBaseFollower.create_table()
@@ -36,7 +36,7 @@ You can also use the following code to get the data you created in shell
 
 ```python
 from django_hbase.client import HBaseClient
-from friendships.hbase_models import HBaseFollowing
+from friendships.models import HBaseFollowing
 
 prefix = b'1000000000000000:' # 15x0
 table = HBaseFollowing.get_table()
@@ -73,7 +73,7 @@ That's why we have provided the full block of code for each block below.
 
 ```python
 from django_hbase.client import HBaseClient
-from friendships.hbase_models import HBaseFollowing
+from friendships.models import HBaseFollowing
 table = HBaseFollowing.get_table()
 def print_rows(rows):
     for row_key, row_value in rows:
@@ -112,7 +112,7 @@ Besides using the `row_start` and `limit`, you can also define a `row_prefix` to
 
 ```python
 from django_hbase.client import HBaseClient
-from friendships.hbase_models import HBaseFollowing
+from friendships.models import HBaseFollowing
 prefix = b'1000000000000000:' # 15x0
 table = HBaseFollowing.get_table()
 def print_rows(rows):
@@ -132,7 +132,7 @@ print_rows(rows)
 
 ```python
 from django_hbase.client import HBaseClient
-from friendships.hbase_models import HBaseFollowing
+from friendships.models import HBaseFollowing
 table = HBaseFollowing.get_table()
 def print_rows(rows):
     for row_key, row_value in rows:
@@ -163,7 +163,7 @@ By using `reverse`, you will find the `row_start` and `row_end` has also got rev
 
 ```python
 from django_hbase.client import HBaseClient
-from friendships.hbase_models import HBaseFollowing
+from friendships.models import HBaseFollowing
 table = HBaseFollowing.get_table()
 def print_rows(rows):
     for row_key, row_value in rows:
