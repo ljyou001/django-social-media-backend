@@ -2,8 +2,7 @@ import time
 
 from django.conf import settings
 from django.core.cache import caches
-from friendships.hbase_models import HBaseFollower, HBaseFollowing
-from friendships.models import Friendship
+from friendships.models import HBaseFollower, HBaseFollowing, Friendship
 from gatekeeper.models import GateKeeper
 from twitter.cache import FOLLOWING_PATTERN
 
@@ -15,6 +14,9 @@ class FriendshipService(object):
 
     @classmethod
     def get_followers(cls, user):
+        """
+        Depreciated after HBase introduced
+        """
         # 错误的写法一
         # 这种写法会导致 N + 1 Queries 的问题
         # 即，filter 出所有 friendships 耗费了一次 Query
@@ -44,6 +46,14 @@ class FriendshipService(object):
             to_user=user,
         ).prefetch_related('from_user')
         return [friendship.from_user for friendship in friendships]
+    
+    @classmethod
+    def get_follower_ids(cls, to_user_id):
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            friendships = Friendship.objects.filter(to_user_id=to_user_id)
+        else:
+            friendships = HBaseFollower.filter(prefix=(to_user_id, None))
+        return [friendship.from_user_id for friendship in friendships]
     
     @classmethod
     def get_following_user_id_set(cls, from_user_id):

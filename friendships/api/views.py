@@ -5,8 +5,7 @@ from friendships.api.serializers import (
     FollowingSerializer,
     FriendshipSerializerForCreate
 )
-from friendships.hbase_models import HBaseFollower, HBaseFollowing
-from friendships.models import Friendship
+from friendships.models import HBaseFollower, HBaseFollowing, Friendship
 from friendships.services import FriendshipService
 from gatekeeper.models import GateKeeper
 from ratelimit.decorators import ratelimit
@@ -36,7 +35,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             page = paginator.paginate_hbase(HBaseFollower, (pk,), request)
         else:
             friendships = Friendship.objects.filter(to_user_id=pk).order_by('-created_at')
-            page = paginator.paginate_queryset(friendships)
+            page = paginator.paginate_queryset(friendships, request)
         serializer = FollowerSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
     
@@ -54,7 +53,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             page = paginator.paginate_hbase(HBaseFollowing, (pk,), request)
         else:
             friendships = Friendship.objects.filter(from_user_id=pk).order_by('-created_at')
-            page = paginator.paginate_queryset(friendships)
+            page = paginator.paginate_queryset(friendships, request)
         serializer = FollowingSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
     
