@@ -1,9 +1,9 @@
+from accounts.models import UserProfile
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import caches
-
-from accounts.models import UserProfile
 from twitter.cache import USER_PROFILE_PATTERN
+from utils.memcached_helper import MemcachedHelper
 
 cache = caches['testing'] if settings.TESTING else caches['default']
 
@@ -44,3 +44,8 @@ class UserService:
     # to check which app used the User/UserProfile model
     # Say, in the likes.api.serializers, you can see the UserSerializerForLikes -> GO there and learn
     # Then, let go and check the friendships.api.serializers -> GO there and learn
+
+    @classmethod
+    def get_user_by_id(cls, user_id):
+        return MemcachedHelper.get_object_through_cache(User, user_id)
+    # This is to move the original function in friendships.models to here

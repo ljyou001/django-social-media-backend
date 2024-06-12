@@ -3,22 +3,24 @@ from django.utils.decorators import method_decorator
 from friendships.api.serializers import (
     FollowerSerializer,
     FollowingSerializer,
-    FriendshipSerializerForCreate,
+    FriendshipSerializerForCreate
 )
+from friendships.hbase_models import HBaseFollower, HBaseFollowing
 from friendships.models import Friendship
 from friendships.services import FriendshipService
+from gatekeeper.models import GateKeeper
 from ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from utils.paginations import PageNumberPagination
+from utils.paginations import EndlessPagination
 
 
 class FriendshipViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = FriendshipSerializerForCreate
-    pagination_class = PageNumberPagination
+    pagination_class = EndlessPagination
 
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
     @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
@@ -26,17 +28,17 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         """
         Get a list of followers based on to_user_id
         pk should be to_user_id
-        GET /api/friendships/pk/followers/
+        GET /api/friendships/<pk>/followers/
         """
-        friendships = Friendship.objects.filter(to_user_id=pk).order_by('-created_at')
-        # Providing the full query set
-        page = self.paginate_queryset(friendships)
-        # Processing paginated parms and slicing the full queryset
-        # This will call the self.paginator and initialize the pagination_class above, then slicing
+        pk = int(pk) # In case type transform in paginator
+        paginator = self.paginator
+        if GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            page = paginator.paginate_hbase(HBaseFollower, (pk,), request)
+        else:
+            friendships = Friendship.objects.filter(to_user_id=pk).order_by('-created_at')
+            page = paginator.paginate_queryset(friendships)
         serializer = FollowerSerializer(page, many=True, context={'request': request})
-        # Render paginated data to the frontend
-        return self.get_paginated_response(serializer.data)
-        # Return the rendered data
+        return paginator.get_paginated_response(serializer.data)
     
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
     @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
@@ -44,12 +46,17 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         """
         Get a list of followings user based on from_user_id
         pk should be from_user_id
-        GET /api/friendships/pk/followings/
+        GET /api/friendships/<pk>/followings/
         """
-        friendships = Friendship.objects.filter(from_user_id=pk).order_by('-created_at')
-        page = self.paginate_queryset(friendships)
+        pk = int(pk)
+        paginator = self.paginator
+        if GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            page = paginator.paginate_hbase(HBaseFollowing, (pk,), request)
+        else:
+            friendships = Friendship.objects.filter(from_user_id=pk).order_by('-created_at')
+            page = paginator.paginate_queryset(friendships)
         serializer = FollowingSerializer(page, many=True, context={'request': request})
-        return self.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(serializer.data)
     
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
     @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
@@ -57,18 +64,21 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         """
         Create follow relationship between logged-in user (from_user_id) and some to_user_id
         pk should be to_user_id
-        POST /api/friendships/pk/follow
+        POST /api/friendships/<pk>/follow
         """
-        if Friendship.objects.filter(from_user_id=request.user, to_user_id=pk).exists():
+        to_follow_user = self.get_object()
+        # get_object can help us to check whether the pk is exist
+        # get_object will load the queryset in this viewset
+        # Then its get_object_or_404 will examine whether the user exists
+        if FriendshipService.has_followed(request.user.id, to_follow_user.id):
             return Response({
                 'success': True,
                 'duplicate': True,
             }, status=status.HTTP_201_CREATED)
-        # silent error handling: if doesn't matter if this is a duplicate
 
         serializer = FriendshipSerializerForCreate(data={
             'from_user_id': request.user.id,
-            'to_user_id': pk,
+            'to_user_id': to_follow_user.id,
         })
         if not serializer.is_valid():
             return Response({
@@ -91,42 +101,17 @@ class FriendshipViewSet(viewsets.GenericViewSet):
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
     @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def unfollow(self, request, pk):
-        self.get_object()
-        # if user(id=pk) not exist, 404 error will raise
-        if request.user.id == int(pk):
+        unfollow_user = self.get_object()
+        if request.user.id == unfollow_user.id:
             return Response({
                 'success': False,
                 'error': 'you cannot unfollow yourself',
             }, status=status.HTTP_400_BAD_REQUEST)
-        deleted, _ = Friendship.objects.filter(
-            from_user = request.user,
-            to_user=pk,
-        ).delete()
-        # .delete() will return (
-        # how many elements you deleted,
-        # how many elements per models you deleted 
-        # )
-        # This is because you might used on cascade delete
-        # In prod, we normally use set null in case of domino effect.
-
-        # Here we can know some don't while using SQL DB:
-        # 1. Don't use JOIN: O(n^2) the whole step, mem is also big
-        # 2. Don't use CASCADE
-        # 3. Drop Foreign key constraint, use int/str id directly instead
-        
-        # FriendshipService.invalidate_following_cache(request.user.id)
+        deleted = FriendshipService.unfollow(request.user.id, unfollow_user.id)
         return Response({
             'success': True,
             'deleted': deleted,
         }, status=status.HTTP_200_OK)
-
-
-    # def list(self, request):
-    #     """
-    #     Only to enable the api access at GET /, which mean it will show this:
-    #     "api/friendships": "<host>/api/friendships/"
-    #     """
-    #     return(Response({'message': 'This is friendship API'}))
 
     def list(self,request):
         """

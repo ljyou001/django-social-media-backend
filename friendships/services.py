@@ -1,7 +1,10 @@
+import time
+
 from django.conf import settings
 from django.core.cache import caches
-
+from friendships.hbase_models import HBaseFollower, HBaseFollowing
 from friendships.models import Friendship
+from gatekeeper.models import GateKeeper
 from twitter.cache import FOLLOWING_PATTERN
 
 cache = caches['testing'] if settings.TESTING else caches['default']
@@ -43,41 +46,20 @@ class FriendshipService(object):
         return [friendship.from_user for friendship in friendships]
     
     @classmethod
-    def has_followed(cls, from_user, to_user):
-        """
-        This function is useless after we added the following functions
-        """
-        return Friendship.objects.filter(
-            from_user=from_user, 
-            to_user=to_user
-        ).exists()
-    
-    @classmethod
     def get_following_user_id_set(cls, from_user_id):
         """
         Get the following user id set based on the from_user_id
         """
-        key = FOLLOWING_PATTERN.format(user_id=from_user_id)
-        # FOLLOWING_PATTERN is under the directory 'twitter', as this is a shared feature for the whole project
-        user_id_set = cache.get(key) 
-        # don't need try and catch
-        # Please note, memcached only uses the string to store, here contains a de-serialization step.
-        if user_id_set is not None:
-            # if there is nothing in the cache, return None
-            return user_id_set
-        # if user_id_set is None:
-        friendships = Friendship.objects.filter(from_user_id=from_user_id) # query first
+        # TO DO: Cache in Redis
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            friendships = Friendship.objects.filter(from_user_id=from_user_id)
+        else:
+            friendships = HBaseFollowing.filter(prefix=(from_user_id, None))
         user_id_set = set([
             fs.to_user_id 
             for fs in friendships
-        ]) # then convert to set
-        cache.set(key, user_id_set) # save to the cache
-        # Please note, memcached only uses the string to store, here contains a serialization step.
+        ]) 
         return user_id_set
-        # Learning note: when will the cache disappear?
-        # 1. Manually delete
-        # 2. Expired due to the TTL
-        # 3. Low memory: delete the LRU, least recently used, cached keys
     
     @classmethod
     def invalidate_following_cache(cls, from_user_id):
@@ -97,3 +79,88 @@ class FriendshipService(object):
     def get_following_user_ids(cls, to_user_id):
         friendships = Friendship.objects.filter(to_user_id=to_user_id)
         return [friendship.from_user_id for friendship in friendships]
+    
+    @classmethod
+    def follow(cls, from_user_id, to_user_id):
+        """
+        Applied gatekeeper for MySQL and HBase
+        Only on/off switch
+        """
+        if from_user_id == to_user_id:
+            return None
+        
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            return Friendship.objects.create(
+                from_user_id=from_user_id,
+                to_user_id=to_user_id,
+            )
+
+        # Create data in HBase
+        now = int(time.time() * 1000000)
+        HBaseFollower.create(
+            from_user_id=from_user_id,
+            to_user_id=to_user_id,
+            created_at=now,
+        )
+        # You can return either one 
+        return HBaseFollowing.create(
+            from_user_id=from_user_id,
+            to_user_id=to_user_id,
+            created_at=now,
+        )
+    
+    @classmethod
+    def unfollow(cls, from_user_id, to_user_id):
+        if from_user_id == to_user_id:
+            return 0
+        
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            # deleted: how many data got deleted
+            # _: detailed number and type got deleted, ignored here
+            deleted, _ = Friendship.objects.filter(
+                from_user_id=from_user_id,
+                to_user_id=to_user_id,
+            ).delete()
+            return deleted
+
+        instance = cls.get_follow_instance(from_user_id, to_user_id)
+        if instance is None:
+            return 0
+        # Obtaining the instance is mainly for the create_at
+        HBaseFollowing.delete(from_user_id=from_user_id, created_at=instance.created_at)
+        HBaseFollower.delete(to_user_id=to_user_id, created_at=instance.created_at)
+        return 1
+    
+    @classmethod
+    def get_follow_instance(cls, from_user_id, to_user_id):
+        followings = HBaseFollowing.filter(prefix=(from_user_id, None))
+        for follow in followings:
+            if follow.to_user_id == to_user_id:
+                return follow
+        return None
+
+    @classmethod
+    def has_followed(cls, from_user_id, to_user_id):
+        """
+        New has_followed function has merged the old one and HBase one
+        """
+        if from_user_id == to_user_id:
+            return True
+        
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            return Friendship.objects.filter(
+                from_user_id=from_user_id, 
+                to_user_id=to_user_id,
+            ).exists()
+        
+        instance = cls.get_follow_instance(from_user_id, to_user_id)
+        return instance is not None
+    
+    @classmethod
+    def get_following_count(cls, from_user_id):
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            return Friendship.objects.filter(from_user_id=from_user_id).count()
+        followings = HBaseFollowing.filter(prefix=(from_user_id, None))
+        return len(followings)
+    
+    
