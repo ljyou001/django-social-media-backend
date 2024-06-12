@@ -186,15 +186,18 @@ class HBaseModel:
         # print(instance.__dict__)
         # {'from_user_id': 1, 'to_user_id': 2, 'created_at': 123}
 
-    def save(self):
+    def save(self, batch=None):
         row_data = self.serialize_row_data(self.__dict__)
         if len(row_data) == 0:
             # If row_data is empty, it means no column key values need to be stored in HBase
             # In this case, HBase will not store anything and **ignore** the operation 
             # Here is a notice for user to avoid store empty value
             raise EmptyColumnError('Empty column data')
-        table = self.get_table()
-        table.put(self.row_key, row_data)
+        if batch:
+            batch.put(self.row_key, row_data)
+        else:
+            table = self.get_table()
+            table.put(self.row_key, row_data)
 
     # HBaseModel.create()
     # 1. Friendship.create(from_user_id=1, to_user_id=2, created_at=123)
@@ -203,11 +206,24 @@ class HBaseModel:
     # 3. instance.from_user_id = 2  # <- modify
     #     instance.save()
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, batch=None, **kwargs):
         instance = cls(**kwargs) # <- pass to def __init__() of this class
         # instance = cls(kwargs) is wrong, since kwargs is a dict, it means only 1 parm was delivered
-        instance.save()
+        instance.save(batch=batch)
         return instance
+    
+    @classmethod
+    def batch_create(cls, batch_data):
+        table = cls.get_table()
+        batch = table.batch()
+        results = []
+        for data in batch_data:
+            results.append(cls.create(batch=batch, **data))
+            # This will call batch.put in create function
+            # which will not immediately send requests to HBase
+        batch.send()
+        # This will send everything to HBase
+        return results
     
     # HBaseModel.get()
     # 1. Friendship.get(from_user_id=1, to_user_id=2,...)
@@ -257,7 +273,6 @@ class HBaseModel:
             cls.get_table_name(),
             column_families
         )
-
 
     # START: This part is for filtering in HBase
 
