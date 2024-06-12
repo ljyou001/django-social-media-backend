@@ -50,27 +50,16 @@ class FriendshipService(object):
         """
         Get the following user id set based on the from_user_id
         """
-        key = FOLLOWING_PATTERN.format(user_id=from_user_id)
-        # FOLLOWING_PATTERN is under the directory 'twitter', as this is a shared feature for the whole project
-        user_id_set = cache.get(key) 
-        # don't need try and catch
-        # Please note, memcached only uses the string to store, here contains a de-serialization step.
-        if user_id_set is not None:
-            # if there is nothing in the cache, return None
-            return user_id_set
-        # if user_id_set is None:
-        friendships = Friendship.objects.filter(from_user_id=from_user_id) # query first
+        # TO DO: Cache in Redis
+        if not GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            friendships = Friendship.objects.filter(from_user_id=from_user_id)
+        else:
+            friendships = HBaseFollowing.filter(prefix=(from_user_id, None))
         user_id_set = set([
             fs.to_user_id 
             for fs in friendships
-        ]) # then convert to set
-        cache.set(key, user_id_set) # save to the cache
-        # Please note, memcached only uses the string to store, here contains a serialization step.
+        ]) 
         return user_id_set
-        # Learning note: when will the cache disappear?
-        # 1. Manually delete
-        # 2. Expired due to the TTL
-        # 3. Low memory: delete the LRU, least recently used, cached keys
     
     @classmethod
     def invalidate_following_cache(cls, from_user_id):

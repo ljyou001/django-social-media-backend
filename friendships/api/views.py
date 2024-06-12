@@ -3,22 +3,24 @@ from django.utils.decorators import method_decorator
 from friendships.api.serializers import (
     FollowerSerializer,
     FollowingSerializer,
-    FriendshipSerializerForCreate,
+    FriendshipSerializerForCreate
 )
+from friendships.hbase_models import HBaseFollower, HBaseFollowing
 from friendships.models import Friendship
 from friendships.services import FriendshipService
+from gatekeeper.models import GateKeeper
 from ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from utils.paginations import PageNumberPagination
+from utils.paginations import EndlessPagination
 
 
 class FriendshipViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = FriendshipSerializerForCreate
-    pagination_class = PageNumberPagination
+    pagination_class = EndlessPagination
 
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
     @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
@@ -26,17 +28,17 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         """
         Get a list of followers based on to_user_id
         pk should be to_user_id
-        GET /api/friendships/pk/followers/
+        GET /api/friendships/<pk>/followers/
         """
-        friendships = Friendship.objects.filter(to_user_id=pk).order_by('-created_at')
-        # Providing the full query set
-        page = self.paginate_queryset(friendships)
-        # Processing paginated parms and slicing the full queryset
-        # This will call the self.paginator and initialize the pagination_class above, then slicing
+        pk = int(pk) # In case type transform in paginator
+        paginator = self.paginator
+        if GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            page = paginator.paginate_hbase(HBaseFollower, (pk,), request)
+        else:
+            friendships = Friendship.objects.filter(to_user_id=pk).order_by('-created_at')
+            page = paginator.paginate_queryset(friendships)
         serializer = FollowerSerializer(page, many=True, context={'request': request})
-        # Render paginated data to the frontend
-        return self.get_paginated_response(serializer.data)
-        # Return the rendered data
+        return paginator.get_paginated_response(serializer.data)
     
     @action(methods=['get'], detail=True, permission_classes=[AllowAny])
     @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
@@ -44,12 +46,17 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         """
         Get a list of followings user based on from_user_id
         pk should be from_user_id
-        GET /api/friendships/pk/followings/
+        GET /api/friendships/<pk>/followings/
         """
-        friendships = Friendship.objects.filter(from_user_id=pk).order_by('-created_at')
-        page = self.paginate_queryset(friendships)
+        pk = int(pk)
+        paginator = self.paginator
+        if GateKeeper.is_switch_on('switch_friendship_to_hbase'):
+            page = paginator.paginate_hbase(HBaseFollowing, (pk,), request)
+        else:
+            friendships = Friendship.objects.filter(from_user_id=pk).order_by('-created_at')
+            page = paginator.paginate_queryset(friendships)
         serializer = FollowingSerializer(page, many=True, context={'request': request})
-        return self.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(serializer.data)
     
     @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated])
     @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
@@ -57,7 +64,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         """
         Create follow relationship between logged-in user (from_user_id) and some to_user_id
         pk should be to_user_id
-        POST /api/friendships/pk/follow
+        POST /api/friendships/<pk>/follow
         """
         to_follow_user = self.get_object()
         # get_object can help us to check whether the pk is exist

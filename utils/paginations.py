@@ -4,6 +4,7 @@ from rest_framework.pagination import BasePagination
 from rest_framework.pagination import \
     PageNumberPagination as DjangoPageNumberPagination
 from rest_framework.response import Response
+from utils.time_constants import MAX_TIMESTAMP
 
 
 class PageNumberPagination(DjangoPageNumberPagination):
@@ -185,3 +186,70 @@ class EndlessPagination(BasePagination):
             'has_next_page': self.has_next_page,
             'results': data,
         })
+    
+    ### START FROM HERE: HBase Paginated support
+
+    def paginate_hbase(self, hb_model, row_key_prefix, request):
+        if 'created_at__gt' in request.query_params:
+            # created_at__gt is to load the newest data while scroll up at top or pull-down refresh
+            # Pull-down refresh will not have any pagination mechanism
+            # If the data has not been updated for long, then pull-down refresh will reload everything
+            # e.g. the timeline has [0, 2, 4, 6, 8, 10], if we want created_at__lt=8, page_size=2
+            created_at__gt = request.query_params['created_at__gt']
+            start = (*row_key_prefix, created_at__gt)
+            stop = (*row_key_prefix, MAX_TIMESTAMP)
+            # Why this is not stop = (*row_key_prefix, None)?
+            # This is because None is the smallest data in the HBase, since the row key is sorted in string format
+            # (1, None) -> '1'; (1, 1234) -> 1:1234; (1, 1235) -> 1:1235
+            objects = hb_model.filter(start=start, stop=stop)
+            # No limit, we want all the data
+            if len(objects) and objects[0].created_at == int(created_at__gt):
+                # This is handle HBase only support >= but not >
+                # if we see the create_at in the first data is same as the created_at__gt
+                # we need to delete it since it has already obtained
+                objects = objects[:0:-1]
+                # Here is to [1, 2, 3, 4] to [4, 3, 2]
+                # [start:stop:step]
+                # always start -> stop and [start, stop)
+                # if step < 0, start is None, then start from the tail to head, not include stop.
+            else:
+                objects = objects[::-1]
+            self.has_next_page = False
+            return objects
+        
+        if 'created_at__lt' in request.query_params:
+            # created_at__lt is for scroll-down data loading for older data
+            created_at__lt = request.query_params['created_at__lt']
+            start = (*row_key_prefix, created_at__lt)
+            stop = (*row_key_prefix, None)
+            # Do not leave hb_model.filter(...stop=None...)
+            # row_key_prefix included other essential information
+            # e.g. Friendship.Following, you need to use row_key_prefix to filter the user first
+            objects = hb_model.filter(start=start, stop=stop, limit=self.page_size + 2, reverse=True)
+            # find the objects that timestamp < created_at__lt in reverse order. Load page_size + 1 objects
+            # reverse is because timestamp is from old to new, we want a new-to-old data sequence
+            # HBase only support <= but not <, so we need to have page_size + 2 pieces of data
+            # e.g. the timeline has [0, 2, 4, 6, 8, 10], if we want created_at__lt=8, page_size=2
+            # then we want to have [6, 4, 2], however, in this case, HBase will return [8, 6, 4, 2]
+            if len(objects) and objects[0].created_at == int(created_at__lt):
+                # Here is to handle the HBase only support <= problem
+                # In the example, this will trim the data to [6, 4, 2]
+                # Also in the example, created_at__lt=7, data is [6, 4, 2], this if block will not be executed 
+                objects = objects[1:]
+            if len(objects) > self.page_size:
+                # Handling the next_page and reverse the return result
+                self.has_next_page = True
+                objects = objects[:-1]
+            else:
+                self.has_next_page = False
+            return objects
+        
+        # Without any parameters, load the latest page
+        prefix = (*row_key_prefix, None)
+        objects = hb_model.filter(prefix=prefix, limit=self.page_size + 1, reverse=True)
+        if len(objects) > self.page_size:
+            self.has_next_page = True
+            objects = objects[:-1]
+        else:
+            self.has_next_page = False
+        return objects
