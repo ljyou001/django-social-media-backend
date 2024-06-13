@@ -3,6 +3,11 @@ from twitter.cache import USER_TWEETS_PATTERN
 from utils.redis_helper import RedisHelper
 
 
+def lazy_load_tweets(user_id):
+    def _lazy_load(limit):
+        return Tweet.objects.filter(user_id=user_id).order_by('-created_at')[:limit]
+    return _lazy_load
+
 class TweetService(object):
 
     @classmethod
@@ -20,16 +25,10 @@ class TweetService(object):
 
     @classmethod
     def get_cached_tweets(cls, user_id):
-        queryset = Tweet.objects.filter(user_id=user_id).order_by('-created_at')
-        # Lazy Loading: not actually load the tweets from the database
-        # for loop, list(queryset), direct access... 
-        # DB access will only triggered when you are actually using the data
         key = USER_TWEETS_PATTERN.format(user_id=user_id)
-        return RedisHelper.load_objects(key, queryset)
-        # Why Helper? Cuz newsfeeds could also use this
+        return RedisHelper.load_objects(key, lazy_load_tweets(user_id))
     
     @classmethod
     def push_tweet_to_cache(cls, tweet):
-        queryset = Tweet.objects.filter(user_id=tweet.user_id).order_by('-created_at')
         key = USER_TWEETS_PATTERN.format(user_id=tweet.user_id)
-        RedisHelper.push_object(key, tweet, queryset)
+        RedisHelper.push_object(key, tweet, lazy_load_tweets(tweet.user_id))
