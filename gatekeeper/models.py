@@ -45,3 +45,11 @@ class GateKeeper(object):
         Also, if you increase the percentage, we still want the original users pass the gatekeeper
         """
         return user_id % 100 < cls.get(gk_name)['percent']
+    
+    @classmethod
+    def turn_on(cls, gk_name):
+        cls.set_kv(gk_name, 'precent', 100)
+
+    @classmethod
+    def turn_off(cls, gk_name):
+        cls.set_kv(gk_name, 'precent', 0)
