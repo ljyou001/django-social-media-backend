@@ -10,6 +10,7 @@ from friendships.services import FriendshipService
 from gatekeeper.models import GateKeeper
 from likes.models import Like
 from newsfeeds.models import NewsFeed
+from newsfeeds.services import NewsFeedService
 from rest_framework.test import APIClient
 from tweets.models import Tweet
 from utils.redis_client import RedisClient
@@ -134,7 +135,15 @@ class TestCase(DjangoTestCase):
         """
         This function will create newsfeed using the model create 
         """
-        return NewsFeed.objects.create(user=user, tweet=tweet)
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            created_at = tweet.timestamp
+        else:
+            created_at = tweet.created_at
+        return NewsFeedService.create(
+            user_id=user.id, 
+            tweet_id=tweet.id, 
+            created_at=created_at,
+        )
 
     def create_friendship(self, from_user, to_user):
         return FriendshipService.follow(from_user.id, to_user.id)

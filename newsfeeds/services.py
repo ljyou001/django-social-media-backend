@@ -4,7 +4,7 @@ from newsfeeds.models import HBaseNewsFeed, NewsFeed
 from newsfeeds.tasks import fanout_newsfeeds_main_task
 from twitter.cache import USER_NEWSFEEDS_PATTERN
 from utils.redis_helper import RedisHelper
-
+from utils.redis_serializers import HBaseModelSerializer, DjangoModelSerializer
 
 def lazy_load_newsfeeds(user_id):
     """
@@ -35,8 +35,17 @@ class NewsFeedService(object):
         parameter is `tweet`, all listening workers could take this task
         Task processing worker will execute codes asynchronously in fanout_newsfeeds_task
         If this task need 10s to finish, then the 10s will be spent by worker in backend rather than user 
+
+        ===
+        New Support for HBase
+        1. Gatekeeper
+        2. add created_at
         """
-        fanout_newsfeeds_main_task.delay(tweet.id, tweet.user_id) # <- adding tweet.user_id to -1 DB call
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            created_at = tweet.timestamp
+        else:
+            created_at = tweet.created_at
+        fanout_newsfeeds_main_task.delay(tweet.id, created_at, tweet.user_id) # <- adding tweet.user_id to -1 DB call
         # The line only put the task into the message queue rather than execute the function to make the user wait
         # 
         # NOTE: parameter in .delay() should be values that can be serialized by celery
@@ -48,8 +57,12 @@ class NewsFeedService(object):
 
     @classmethod
     def get_cached_newsfeeds(cls, user_id):
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            serializer = HBaseModelSerializer
+        else:
+            serializer = DjangoModelSerializer
         key = USER_NEWSFEEDS_PATTERN.format(user_id=user_id)
-        return RedisHelper.load_objects(key, lazy_load_newsfeeds(user_id))
+        return RedisHelper.load_objects(key, lazy_load_newsfeeds(user_id), serializer)
 
     @classmethod
     def push_newsfeed_to_cache(cls, newsfeed):
@@ -70,3 +83,14 @@ class NewsFeedService(object):
             NewsFeedService.push_newsfeed_to_cache(newsfeed)
 
         return newsfeeds
+    
+    @classmethod
+    def create(cls, **kwargs):
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            newsfeed = HBaseNewsFeed.create(**kwargs)
+            cls.push_newsfeed_to_cache(newsfeed)
+            # Always trigger push to cache manually
+            # There is no listener for HBase models
+        else:
+            newsfeed = NewsFeed.objects.create(**kwargs)
+        return newsfeed
