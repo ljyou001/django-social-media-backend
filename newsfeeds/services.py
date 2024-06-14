@@ -55,3 +55,18 @@ class NewsFeedService(object):
     def push_newsfeed_to_cache(cls, newsfeed):
         key = USER_NEWSFEEDS_PATTERN.format(user_id=newsfeed.user_id)
         RedisHelper.push_object(key, newsfeed, lazy_load_newsfeeds(newsfeed.user_id))
+
+    @classmethod
+    def batch_create(cls, batch_params):
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            newsfeeds = HBaseNewsFeed.batch_create(batch_params)
+        else:
+            newsfeeds = [NewsFeed(**params) for params in batch_params]
+            NewsFeed.objects.bulk_create(newsfeeds)
+        
+        # bulk_create or batch_create will not trigger post_save signal, 
+        # you need to manually create them into the cache
+        for newsfeed in newsfeeds:
+            NewsFeedService.push_newsfeed_to_cache(newsfeed)
+
+        return newsfeeds
