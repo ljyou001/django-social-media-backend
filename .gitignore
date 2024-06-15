@@ -142,3 +142,6 @@ selfie*
 jdk*
 hbase-2.6.0*
 thrift*
+
+# static
+static
