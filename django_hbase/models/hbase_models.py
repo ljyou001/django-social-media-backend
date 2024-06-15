@@ -186,6 +186,10 @@ class HBaseModel:
         # print(instance.__dict__)
         # {'from_user_id': 1, 'to_user_id': 2, 'created_at': 123}
 
+    @property
+    def id(self):
+        return self.row_key
+
     def save(self, batch=None):
         row_data = self.serialize_row_data(self.__dict__)
         if len(row_data) == 0:

@@ -5,9 +5,13 @@ from tweets.api.serializers import TweetSerializer
 
 
 class NewsFeedSerializer(serializers.Serializer):
+    id = serializers.SerializerMethodField()
     tweet = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
 
+    def get_id(self, obj):
+        return obj.id
+    
     def get_tweet(self, obj):
         # This is not ModelSerializer:
         # 1. You must warp the tweet into a SerializerMethodField class
