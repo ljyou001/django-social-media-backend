@@ -13,18 +13,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from accounts.api.views import AccountViewSet, UserProfileViewSet, UserViewSet
+from comments.api.views import CommentViewSet
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework import routers
-
-from accounts.api.views import AccountViewSet, UserViewSet, UserProfileViewSet
-from comments.api.views import CommentViewSet
 from friendships.api.views import FriendshipViewSet
 from inbox.api.views import NotificationViewSet
 from likes.api.views import LikeViewSet
 from newsfeeds.api.views import NewsFeedViewSet
+from rest_framework import routers
 from tweets.api.views import TweetViewSet
-
 
 router = routers.DefaultRouter()
 router.register(r'api/users', UserViewSet)
@@ -42,4 +42,4 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('__debug__/', include('debug_toolbar.urls')),
-]
+]+static(settings.STATIC_URL,document_root=settings.STATIC_ROOT)
