@@ -94,3 +94,11 @@ class NewsFeedService(object):
         else:
             newsfeed = NewsFeed.objects.create(**kwargs)
         return newsfeed
+    
+    @classmethod
+    def count(self, user_id=None):
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            return len(HBaseNewsFeed.filter(prefix=(user_id,)))
+        if user_id is None:
+            return NewsFeed.objects.count()
+        return NewsFeed.objects.filter(user_id=user_id).count()

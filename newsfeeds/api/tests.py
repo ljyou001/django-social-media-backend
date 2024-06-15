@@ -1,6 +1,7 @@
 from django.conf import settings
 from friendships.models import Friendship
-from newsfeeds.models import NewsFeed
+from gatekeeper.models import GateKeeper
+from newsfeeds.models import HBaseNewsFeed, NewsFeed
 from newsfeeds.services import NewsFeedService
 from rest_framework.test import APIClient
 from testing.testcases import TestCase
@@ -77,13 +78,28 @@ class NewsFeedTestCase(TestCase):
         # pull the first page
         response = self.user1_client.get(NEWSFEEDS_URL)
         self.assertEqual(response.data['has_next_page'], True)
-        self.assertEqual(len(response.data['results']), page_size)
-        self.assertEqual(response.data['results'][0]['id'], newsfeeds[0].id)
-        self.assertEqual(response.data['results'][1]['id'], newsfeeds[1].id)
+        results = response.data['results']
+        self.assertEqual(len(results), page_size)
+        self.assertEqual(results[0]['created_at'], newsfeeds[0].created_at)
+        self.assertEqual(results[1]['created_at'], newsfeeds[1].created_at)
         self.assertEqual(
-            response.data['results'][page_size - 1]['id'],
-            newsfeeds[page_size - 1].id,
+            results[page_size - 1]['created_at'], 
+            newsfeeds[page_size - 1].created_at,
         )
+        # Change for HBase support: 1. ID to created_at
+        # There is no incremental ID in HBase
+        # If you don't want to change this part of code
+        # You can also add a @property in HBaseNewsFeed adding user_id and created_at together
+        # But emmm... normally not recommended, since this is not a front-end req
+        # 
+        # self.assertEqual(len(response.data['results']), page_size)
+        # self.assertEqual(response.data['results'][0]['id'], newsfeeds[0].id)
+        # self.assertEqual(response.data['results'][1]['id'], newsfeeds[1].id)
+        # self.assertEqual(
+        #     response.data['results'][page_size - 1]['id'],
+        #     newsfeeds[page_size - 1].id,
+        # )
+        
 
         # pull the second page
         response = self.user1_client.get(
@@ -93,12 +109,13 @@ class NewsFeedTestCase(TestCase):
         self.assertEqual(response.data['has_next_page'], False)
         results = response.data['results']
         self.assertEqual(len(results), page_size)
-        self.assertEqual(results[0]['id'], newsfeeds[page_size].id)
-        self.assertEqual(results[1]['id'], newsfeeds[page_size + 1].id)
+        self.assertEqual(results[0]['created_at'], newsfeeds[page_size].created_at)
+        self.assertEqual(results[1]['created_at'], newsfeeds[page_size + 1].created_at)
         self.assertEqual(
-            results[page_size - 1]['id'],
-            newsfeeds[2 * page_size - 1].id,
+            results[page_size - 1]['created_at'],
+            newsfeeds[2 * page_size - 1].created_at,
         )
+        # ID to created_at, same as above
 
         # pull latest newsfeeds
         response = self.user1_client.get(
@@ -117,7 +134,7 @@ class NewsFeedTestCase(TestCase):
         )
         self.assertEqual(response.data['has_next_page'], False)
         self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['id'], new_newsfeed.id)
+        self.assertEqual(response.data['results'][0]['created_at'], new_newsfeed.created_at)
 
     def test_user_cache(self):
         """
@@ -202,13 +219,17 @@ class NewsFeedTestCase(TestCase):
         # only cached list_limit objects
         cached_newsfeeds = NewsFeedService.get_cached_newsfeeds(self.user1.id)
         self.assertEqual(len(cached_newsfeeds), list_limit)
-        queryset = NewsFeed.objects.filter(user=self.user1)
-        self.assertEqual(queryset.count(), list_limit + page_size)
+        self.assertEqual(NewsFeedService.count(self.user1.id), list_limit + page_size)
+        # Change for HBase support: 2. count, since no built in count function
+        # 
+        # There is no built in count function in HBaseModel
+        # queryset = NewsFeed.objects.filter(user=self.user1)
+        # self.assertEqual(queryset.count(), list_limit + page_size)
 
         results = self._paginate_to_get_newsfeeds(self.user1_client)
         self.assertEqual(len(results), list_limit + page_size)
         for i in range(list_limit + page_size):
-            self.assertEqual(results[i]['id'], newsfeeds[i].id)
+            self.assertEqual(results[i]['created_at'], newsfeeds[i].created_at)
         
         # a followed user create a new tweet
         self.create_friendship(self.user1, self.user2)
@@ -220,7 +241,7 @@ class NewsFeedTestCase(TestCase):
             self.assertEqual(len(results), list_limit + page_size + 1)
             self.assertEqual(results[0]['tweet']['id'], new_tweet.id)
             for i in range(list_limit + page_size):
-                self.assertEqual(results[i + 1]['id'], newsfeeds[i].id)
+                self.assertEqual(results[i + 1]['created_at'], newsfeeds[i].created_at)
 
         _test_newsfeeds_after_new_feed_pushed()
         self.clear_cache()

@@ -22,6 +22,8 @@ class TestCase(DjangoTestCase):
 
     def setUp(self):
         self.clear_cache()
+        GateKeeper.turn_on('switch_friendship_to_hbase')
+        GateKeeper.turn_on('switch_newsfeed_to_hbase')
         try:
             self.hbase_tables_created = True
             for hbase_model_class in HBaseModel.__subclasses__():
@@ -60,11 +62,6 @@ class TestCase(DjangoTestCase):
         """
         RedisClient.clear()
         caches['testing'].clear()
-        GateKeeper.set_kv('switch_friendship_to_hbase', 'percent', 100)
-        # This one is to turn on/off the new feature during the test
-        # If you directly turn this one thrift will report a org.apache.hadoop.hbase.TableNotFoundException
-        # It means you did not create the HBase table
-        # In friendships.api.tests' case, this is because setUp was overriden 
 
     @property
     def anonymous_client(self):
