@@ -104,13 +104,19 @@ class EndlessPagination(BasePagination):
         Very brute force way to paginate the ordered list
         Assume all data are in the cache.
         We will discuss later if only particial data is in the cache
+
+        =====
+        Make changes for HBase Support:
+        In SQL DB, we use iso format to store time, such as `2024-08-18 18:28:38.000000 +08:00`
+        (Please note: We don't want to have a timezone convertion in storage layer, +8 is just an example, normally use UTC)
+        However, we use timestamp in HBase. We need to add such support here.
         """
         # Getting newer data
         if 'created_at__gt' in request.query_params:
-            created_at__gt = parser.isoparse(request.query_params['created_at__gt'])
-            # Why isoparse?
-            # We want to unify the time format, then we can compare the created_at
-            # originally 2023-06-28 08:19:40.123456 to datetime
+            try:
+                created_at__gt = parser.isoparse(request.query_params['created_at__gt'])
+            except ValueError:
+                created_at__gt = int(request.query_params['created_at__gt'])
             objects = []
             for obj in reverse_order_list:
                 if obj.created_at > created_at__gt:
@@ -123,9 +129,12 @@ class EndlessPagination(BasePagination):
         index = 0
         # Getting older data
         if 'created_at__lt' in request.query_params:
-            created_at__gt = parser.isoparse(request.query_params['created_at__lt'])
+            try:
+                created_at__lt = parser.isoparse(request.query_params['created_at__lt'])
+            except ValueError:
+                created_at__lt = int(request.query_params['created_at__lt'])
             for index, obj in enumerate(reverse_order_list):
-                if obj.created_at < created_at__gt:
+                if obj.created_at < created_at__lt:
                     break
             else:
                 reverse_order_list = []

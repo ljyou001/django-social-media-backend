@@ -10,6 +10,7 @@ from friendships.services import FriendshipService
 from gatekeeper.models import GateKeeper
 from likes.models import Like
 from newsfeeds.models import NewsFeed
+from newsfeeds.services import NewsFeedService
 from rest_framework.test import APIClient
 from tweets.models import Tweet
 from utils.redis_client import RedisClient
@@ -21,6 +22,8 @@ class TestCase(DjangoTestCase):
 
     def setUp(self):
         self.clear_cache()
+        GateKeeper.turn_on('switch_friendship_to_hbase')
+        GateKeeper.turn_on('switch_newsfeed_to_hbase')
         try:
             self.hbase_tables_created = True
             for hbase_model_class in HBaseModel.__subclasses__():
@@ -59,11 +62,6 @@ class TestCase(DjangoTestCase):
         """
         RedisClient.clear()
         caches['testing'].clear()
-        GateKeeper.set_kv('switch_friendship_to_hbase', 'percent', 100)
-        # This one is to turn on/off the new feature during the test
-        # If you directly turn this one thrift will report a org.apache.hadoop.hbase.TableNotFoundException
-        # It means you did not create the HBase table
-        # In friendships.api.tests' case, this is because setUp was overriden 
 
     @property
     def anonymous_client(self):
@@ -134,7 +132,15 @@ class TestCase(DjangoTestCase):
         """
         This function will create newsfeed using the model create 
         """
-        return NewsFeed.objects.create(user=user, tweet=tweet)
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            created_at = tweet.timestamp
+        else:
+            created_at = tweet.created_at
+        return NewsFeedService.create(
+            user_id=user.id, 
+            tweet_id=tweet.id, 
+            created_at=created_at,
+        )
 
     def create_friendship(self, from_user, to_user):
         return FriendshipService.follow(from_user.id, to_user.id)

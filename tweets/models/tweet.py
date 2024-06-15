@@ -75,6 +75,13 @@ class Tweet(models.Model):
     def cached_user(self):
         return MemcachedHelper.get_object_through_cache(User, self.user_id)
     
+    @property
+    def timestamp(self):
+        """
+        This property function is to convert create_at to timestamp
+        """
+        return int(self.created_at.timestamp() * 1000000)
+    
     
 post_save.connect(invalidate_object_cache, sender=Tweet)
 pre_delete.connect(invalidate_object_cache, sender=Tweet)
